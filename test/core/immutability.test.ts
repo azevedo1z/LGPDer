@@ -3,21 +3,21 @@ import { describe, it } from 'node:test';
 
 import type { ConsentChange, ConsentDecision, ConsentManager, ConsentSnapshot } from 'lgpder';
 
-import { decisionOf, recordOf } from './support/records.ts';
-import { START, assignUntyped, setup, type PurposeId } from './support/setup.ts';
+import { decisionOf, recordOf } from '../support/records.ts';
+import { START, assignUntyped, setup, type PurposeId } from '../support/setup.ts';
 
 interface PublicObjects {
   readonly consent: ConsentManager<PurposeId>;
   readonly snapshot: ConsentSnapshot<PurposeId>;
   readonly server: ConsentSnapshot<PurposeId>;
   readonly change: ConsentChange<PurposeId>;
-  /** Decisão criada por `decide`. */
+  /** Decision created by `decide`. */
   readonly decided: ConsentDecision;
-  /** Decisão lida do registro hidratado. */
+  /** Decision read from the hydrated record. */
   readonly hydrated: ConsentDecision;
 }
 
-/** Estado que alcança todos os objetos públicos: decisão hidratada, decisão nova e notificação. */
+/** State that reaches every public object: hydrated decision, new decision and notification. */
 function publicObjects(): PublicObjects {
   const { consent, changes } = setup({
     record: recordOf({ health: decisionOf('denied', { version: '1' }) }),
@@ -36,33 +36,36 @@ interface PublicObject {
 }
 
 const PUBLIC_OBJECTS = [
-  { name: 'o gerenciador', pick: ({ consent }) => consent },
-  { name: 'o objeto purposes', pick: ({ consent }) => consent.purposes },
-  { name: 'a configuração de analytics', pick: ({ consent }) => consent.purposes.analytics },
-  { name: 'a configuração de ads', pick: ({ consent }) => consent.purposes.ads },
-  { name: 'a configuração de health', pick: ({ consent }) => consent.purposes.health },
-  { name: 'o snapshot', pick: ({ snapshot }) => snapshot },
-  { name: 'o status do snapshot', pick: ({ snapshot }) => snapshot.status },
-  { name: 'o outdated do snapshot', pick: ({ snapshot }) => snapshot.outdated },
-  { name: 'o record do snapshot', pick: ({ snapshot }) => snapshot.record },
-  { name: 'o record.decisions do snapshot', pick: ({ snapshot }) => snapshot.record.decisions },
-  { name: 'a decisão gravada por decide', pick: ({ decided }) => decided },
-  { name: 'a decisão lida do registro', pick: ({ hydrated }) => hydrated },
-  { name: 'o snapshot de servidor', pick: ({ server }) => server },
-  { name: 'o status do snapshot de servidor', pick: ({ server }) => server.status },
-  { name: 'o outdated do snapshot de servidor', pick: ({ server }) => server.outdated },
-  { name: 'o record do snapshot de servidor', pick: ({ server }) => server.record },
+  { name: 'the manager', pick: ({ consent }) => consent },
+  { name: 'the purposes object', pick: ({ consent }) => consent.purposes },
+  { name: 'the configuration of analytics', pick: ({ consent }) => consent.purposes.analytics },
+  { name: 'the configuration of ads', pick: ({ consent }) => consent.purposes.ads },
+  { name: 'the configuration of health', pick: ({ consent }) => consent.purposes.health },
+  { name: 'the snapshot', pick: ({ snapshot }) => snapshot },
+  { name: 'the status of the snapshot', pick: ({ snapshot }) => snapshot.status },
+  { name: 'the outdated of the snapshot', pick: ({ snapshot }) => snapshot.outdated },
+  { name: 'the record of the snapshot', pick: ({ snapshot }) => snapshot.record },
   {
-    name: 'o record.decisions do snapshot de servidor',
+    name: 'the record.decisions of the snapshot',
+    pick: ({ snapshot }) => snapshot.record.decisions,
+  },
+  { name: 'the decision written by decide', pick: ({ decided }) => decided },
+  { name: 'the decision read from the record', pick: ({ hydrated }) => hydrated },
+  { name: 'the server snapshot', pick: ({ server }) => server },
+  { name: 'the status of the server snapshot', pick: ({ server }) => server.status },
+  { name: 'the outdated of the server snapshot', pick: ({ server }) => server.outdated },
+  { name: 'the record of the server snapshot', pick: ({ server }) => server.record },
+  {
+    name: 'the record.decisions of the server snapshot',
     pick: ({ server }) => server.record.decisions,
   },
-  { name: 'a notificação', pick: ({ change }) => change },
-  { name: 'o snapshot hidratado, entregue em previous', pick: ({ change }) => change.previous },
+  { name: 'the notification', pick: ({ change }) => change },
+  { name: 'the hydrated snapshot, delivered in previous', pick: ({ change }) => change.previous },
 ] as const satisfies readonly PublicObject[];
 
-describe('objetos públicos congelados', () => {
+describe('frozen public objects', () => {
   for (const { name, pick } of PUBLIC_OBJECTS) {
-    it(`Object.isFrozen é verdadeiro para ${name}`, () => {
+    it(`Object.isFrozen is true for ${name}`, () => {
       const value = pick(publicObjects());
 
       assert.equal(typeof value, 'object');
@@ -70,15 +73,15 @@ describe('objetos públicos congelados', () => {
     });
   }
 
-  it('Object.isFrozen é verdadeiro para o changed da notificação', () => {
+  it('Object.isFrozen is true for the changed of the notification', () => {
     const { change } = publicObjects();
 
     assert.ok(Object.isFrozen(change.changed));
   });
 });
 
-describe('referência do snapshot', () => {
-  it('getSnapshot devolve a mesma referência enquanto não há alteração confirmada', () => {
+describe('reference of the snapshot', () => {
+  it('getSnapshot returns the same reference while there is no committed change', () => {
     const { consent } = setup();
     consent.decide({ ads: 'granted' });
     const snapshot = consent.getSnapshot();
@@ -89,7 +92,7 @@ describe('referência do snapshot', () => {
     assert.equal(consent.getSnapshot(), snapshot);
   });
 
-  it('voltar a um estado anterior produz snapshot novo, e não o anterior', () => {
+  it('going back to a previous state produces a new snapshot, not the previous one', () => {
     const { consent } = setup();
     consent.decide({ ads: 'granted' });
     const granted = consent.getSnapshot();
@@ -100,7 +103,7 @@ describe('referência do snapshot', () => {
     assert.notEqual(consent.getSnapshot(), granted);
   });
 
-  it('voltar ao estado sem decisões produz snapshot novo, e não o de servidor', () => {
+  it('going back to the state without decisions produces a new snapshot, not the server one', () => {
     const { consent } = setup();
     consent.decide({ ads: 'granted' });
 
@@ -110,8 +113,8 @@ describe('referência do snapshot', () => {
   });
 });
 
-describe('snapshot de servidor', () => {
-  it('getServerSnapshot devolve sempre o mesmo objeto, mesmo depois de alterações', () => {
+describe('server snapshot', () => {
+  it('getServerSnapshot always returns the same object, even after changes', () => {
     const { consent } = setup();
     const server = consent.getServerSnapshot();
 
@@ -121,7 +124,7 @@ describe('snapshot de servidor', () => {
     assert.equal(consent.getServerSnapshot(), server);
   });
 
-  it('tem tudo pending, nada desatualizado e registro vazio, mesmo com registro hidratado', () => {
+  it('has everything pending, nothing outdated and an empty record, even with a hydrated record', () => {
     const { consent } = setup({ record: recordOf({ ads: decisionOf('granted') }) });
 
     assert.deepStrictEqual(consent.getServerSnapshot(), {
@@ -132,8 +135,8 @@ describe('snapshot de servidor', () => {
   });
 });
 
-describe('compartilhamento estrutural entre snapshots consecutivos', () => {
-  it('decisão inalterada mantém a referência', () => {
+describe('structural sharing between consecutive snapshots', () => {
+  it('an unchanged decision keeps its reference', () => {
     const { consent } = setup({
       record: recordOf({ analytics: decisionOf('granted', { version: '2026-10' }) }),
     });
@@ -144,7 +147,7 @@ describe('compartilhamento estrutural entre snapshots consecutivos', () => {
     assert.equal(consent.getSnapshot().record.decisions.analytics, analytics);
   });
 
-  /** Snapshots antes e depois de remover a decisão desatualizada: só o sinal de analytics muda. */
+  /** Snapshots before and after removing the outdated decision: only the flag of analytics changes. */
   function clearStaleAnalytics() {
     const { consent } = setup({
       record: recordOf({ analytics: decisionOf('granted', { version: '2025-01' }) }),
@@ -154,20 +157,20 @@ describe('compartilhamento estrutural entre snapshots consecutivos', () => {
     return { before, after: consent.getSnapshot() };
   }
 
-  it('status mantém a referência quando nenhuma situação muda, mesmo que outdated mude', () => {
+  it('status keeps its reference when no status changes, even if outdated changes', () => {
     const { before, after } = clearStaleAnalytics();
 
     assert.equal(after.status, before.status);
   });
 
-  it('outdated é um objeto novo, com o sinal atualizado, quando algum sinal muda', () => {
+  it('outdated is a new object, with the updated flag, when some flag changes', () => {
     const { before, after } = clearStaleAnalytics();
 
     assert.notEqual(after.outdated, before.outdated);
     assert.equal(after.outdated.analytics, false);
   });
 
-  it('outdated mantém a referência quando nenhum sinal muda', () => {
+  it('outdated keeps its reference when no flag changes', () => {
     const { consent } = setup();
     const { outdated } = consent.getSnapshot();
 
@@ -176,11 +179,11 @@ describe('compartilhamento estrutural entre snapshots consecutivos', () => {
     assert.equal(consent.getSnapshot().outdated, outdated);
   });
 
-  it('record e record.decisions são objetos novos a cada alteração', () => {
+  it('record and record.decisions are new objects on each change', () => {
     const { consent } = setup({ record: recordOf({ ads: decisionOf('granted') }) });
     const { record } = consent.getSnapshot();
 
-    consent.restore(recordOf({ ads: decisionOf('granted', { decidedAt: START + 1 }) }));
+    consent.restore(recordOf({ ads: decisionOf('granted', { decidedAt: START - 1 }) }));
 
     const next = consent.getSnapshot().record;
     assert.notEqual(next, record);
@@ -188,7 +191,7 @@ describe('compartilhamento estrutural entre snapshots consecutivos', () => {
   });
 });
 
-describe('tentativa de alteração de objeto público', () => {
+describe('attempt to change a public object', () => {
   interface Mutation {
     readonly attempt: string;
     readonly act: (objects: PublicObjects) => void;
@@ -196,67 +199,73 @@ describe('tentativa de alteração de objeto público', () => {
 
   const MUTATIONS = [
     {
-      attempt: 'trocar uma função do gerenciador',
+      attempt: 'replacing a function of the manager',
       act: ({ consent }) => {
         assignUntyped(consent, 'decide', () => undefined);
       },
     },
     {
-      attempt: 'tornar health elegível para grantAll',
+      attempt: 'replacing the maxAge of the manager',
+      act: ({ consent }) => {
+        assignUntyped(consent, 'maxAge', Number.MAX_SAFE_INTEGER);
+      },
+    },
+    {
+      attempt: 'making health eligible for grantAll',
       act: ({ consent }) => {
         assignUntyped(consent.purposes.health, 'individualGrant', false);
       },
     },
     {
-      attempt: 'acrescentar uma finalidade a purposes',
+      attempt: 'adding a purpose to purposes',
       act: ({ consent }) => {
         assignUntyped(consent.purposes, 'extra', {});
       },
     },
     {
-      attempt: 'conceder ads pela situação do snapshot',
+      attempt: 'granting ads through the status of the snapshot',
       act: ({ snapshot }) => {
         assignUntyped(snapshot.status, 'ads', 'granted');
       },
     },
     {
-      attempt: 'marcar health como desatualizada',
+      attempt: 'flagging health as outdated',
       act: ({ snapshot }) => {
         assignUntyped(snapshot.outdated, 'health', true);
       },
     },
     {
-      attempt: 'trocar o registro do snapshot',
+      attempt: 'replacing the record of the snapshot',
       act: ({ snapshot }) => {
         assignUntyped(snapshot, 'record', { format: 1, decisions: {} });
       },
     },
     {
-      attempt: 'trocar uma decisão do registro',
+      attempt: 'replacing a decision of the record',
       act: ({ snapshot }) => {
         assignUntyped(snapshot.record.decisions, 'ads', decisionOf('granted'));
       },
     },
     {
-      attempt: 'trocar o status de uma decisão',
+      attempt: 'replacing the status of a decision',
       act: ({ decided }) => {
         assignUntyped(decided, 'status', 'denied');
       },
     },
     {
-      attempt: 'conceder ads pelo snapshot de servidor',
+      attempt: 'granting ads through the server snapshot',
       act: ({ server }) => {
         assignUntyped(server.status, 'ads', 'granted');
       },
     },
     {
-      attempt: 'trocar a origem da notificação',
+      attempt: 'replacing the source of the notification',
       act: ({ change }) => {
         assignUntyped(change, 'source', 'restore');
       },
     },
     {
-      attempt: 'trocar um item de changed',
+      attempt: 'replacing an item of changed',
       act: ({ change }) => {
         assignUntyped(change.changed, '0', 'health');
       },
@@ -264,7 +273,7 @@ describe('tentativa de alteração de objeto público', () => {
   ] as const satisfies readonly Mutation[];
 
   for (const { attempt, act } of MUTATIONS) {
-    it(`${attempt} lança TypeError e não altera o estado`, () => {
+    it(`${attempt} throws TypeError and does not change the state`, () => {
       const objects = publicObjects();
 
       assert.throws(() => {
@@ -276,8 +285,8 @@ describe('tentativa de alteração de objeto público', () => {
   }
 });
 
-describe('objetos recebidos não são retidos', () => {
-  it('alterar o registro passado em record depois da criação não muda o estado', () => {
+describe('received objects are not retained', () => {
+  it('changing the record passed in record after creation does not change the state', () => {
     const entry = { status: 'granted', decidedAt: START };
     const { consent } = setup({ record: { format: 1, decisions: { ads: entry } } });
 
@@ -286,7 +295,7 @@ describe('objetos recebidos não são retidos', () => {
     assert.deepStrictEqual(consent.getSnapshot().record.decisions, { ads: decisionOf('granted') });
   });
 
-  it('alterar o registro passado a restore depois da chamada não muda o estado', () => {
+  it('changing the record passed to restore after the call does not change the state', () => {
     const entry = { status: 'granted', decidedAt: START };
     const { consent } = setup();
     consent.restore({ format: 1, decisions: { ads: entry } });
@@ -297,22 +306,22 @@ describe('objetos recebidos não são retidos', () => {
   });
 });
 
-describe('protótipos e ordem das chaves', () => {
+describe('prototypes and key order', () => {
   for (const { name, pick } of PUBLIC_OBJECTS) {
-    it(`${name} tem protótipo Object.prototype`, () => {
+    it(`${name} has the prototype Object.prototype`, () => {
       const value = pick(publicObjects());
 
       assert.equal(Object.getPrototypeOf(value), Object.prototype);
     });
   }
 
-  it('changed é um array comum, com protótipo Array.prototype', () => {
+  it('changed is an ordinary array, with the prototype Array.prototype', () => {
     const { change } = publicObjects();
 
     assert.equal(Object.getPrototypeOf(change.changed), Array.prototype);
   });
 
-  it('as chaves do snapshot e do snapshot de servidor vêm na ordem status, outdated, record', () => {
+  it('the keys of the snapshot and of the server snapshot come in the order status, outdated, record', () => {
     const { snapshot, server } = publicObjects();
 
     assert.deepStrictEqual(
@@ -324,7 +333,7 @@ describe('protótipos e ordem das chaves', () => {
     );
   });
 
-  it('assert.deepStrictEqual aceita literais como valor esperado de um snapshot', () => {
+  it('assert.deepStrictEqual accepts literals as the expected value of a snapshot', () => {
     const { snapshot } = publicObjects();
 
     assert.deepStrictEqual(snapshot, {

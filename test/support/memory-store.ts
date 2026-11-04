@@ -1,23 +1,23 @@
-/** Armazenamento em memória para testar a receita de persistência. */
+/** In-memory storage to test the persistence recipe. */
 import type { RecordStore } from '../../examples/consent-store.ts';
 
-/** `RecordStore` em memória, com falha simulável em cada método. */
+/** In-memory `RecordStore`, with a failure that can be simulated in each method. */
 export interface MemoryStore extends RecordStore {
-  /** Texto salvo; `null` quando não há registro. */
+  /** Saved text; `null` when there is no record. */
   value: string | null;
-  /** Faz `read` lançar, como um `SecurityError` do navegador. */
+  /** Makes `read` throw, like a browser `SecurityError`. */
   failRead: boolean;
-  /** Faz somente a próxima chamada de `read` lançar, como uma falha passageira. */
+  /** Makes only the next call to `read` throw, like a transient failure. */
   failNextRead: boolean;
-  /** Faz `write` lançar, como uma cota excedida. */
+  /** Makes `write` throw, like an exceeded quota. */
   failWrite: boolean;
-  /** Faz `remove` lançar. */
+  /** Makes `remove` throw. */
   failRemove: boolean;
-  /** Faz `write` descartar a gravação sem lançar, como o navegador faz com um cookie recusado. */
+  /** Makes `write` discard the write without throwing, as the browser does with a rejected cookie. */
   discardWrite: boolean;
-  /** Faz `remove` descartar a remoção sem lançar. */
+  /** Makes `remove` discard the removal without throwing. */
   discardRemove: boolean;
-  /** Quantidade de gravações concluídas por `write`. */
+  /** Number of writes completed by `write`. */
   writes: number;
 }
 
@@ -34,19 +34,19 @@ export function createMemoryStore(initial: string | null = null): MemoryStore {
     read: () => {
       if (store.failNextRead) {
         store.failNextRead = false;
-        throw new Error('leitura indisponível');
+        throw new Error('read unavailable');
       }
-      if (store.failRead) throw new Error('leitura indisponível');
+      if (store.failRead) throw new Error('read unavailable');
       return store.value;
     },
     write: (value) => {
-      if (store.failWrite) throw new Error('cota excedida');
+      if (store.failWrite) throw new Error('quota exceeded');
       if (store.discardWrite) return;
       store.value = value;
       store.writes += 1;
     },
     remove: () => {
-      if (store.failRemove) throw new Error('remoção indisponível');
+      if (store.failRemove) throw new Error('removal unavailable');
       if (store.discardRemove) return;
       store.value = null;
     },

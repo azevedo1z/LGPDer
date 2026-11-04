@@ -2,13 +2,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
-import { connectStore, type StoredConsent } from '../examples/consent-store.ts';
-import { createMemoryStore } from './support/memory-store.ts';
-import { decisionOf, recordOf, serialized } from './support/records.ts';
-import { setup, type PurposeId } from './support/setup.ts';
+import { connectStore, type StoredConsent } from '../../examples/consent-store.ts';
+import { createMemoryStore } from '../support/memory-store.ts';
+import { decisionOf, recordOf, serialized } from '../support/records.ts';
+import { setup, type PurposeId } from '../support/setup.ts';
 
-describe('ambiente do servidor', () => {
-  it('sem window, como no servidor, o core cria, decide e lê normalmente', () => {
+describe('server environment', () => {
+  it('without window, as on the server, the core creates, decides and reads normally', () => {
     assert.equal('window' in globalThis, false);
     const { consent } = setup({ record: serialized({ ads: decisionOf('granted') }) });
 
@@ -22,8 +22,8 @@ describe('ambiente do servidor', () => {
   });
 
   /**
-   * Conta as leituras do global `name` durante `act`. O global pode nem existir no Node, como
-   * `window`; ao final, o descritor original é restaurado.
+   * Counts the reads of the global `name` during `act`. The global may not even exist in Node, like
+   * `window`; at the end, the original descriptor is restored.
    */
   function countGlobalReads(name: string, act: () => void): number {
     const original = Object.getOwnPropertyDescriptor(globalThis, name);
@@ -44,7 +44,7 @@ describe('ambiente do servidor', () => {
     return reads;
   }
 
-  /** Percorre as operações do core: hidratação, inscrição, decisões, lotes e restauração. */
+  /** Goes through the operations of the core: hydration, subscription, decisions, bulk and restore. */
   function exerciseCore(): void {
     const { consent } = setup({ record: serialized({ ads: decisionOf('granted') }) });
     const unsubscribe = consent.subscribe(() => undefined);
@@ -56,8 +56,8 @@ describe('ambiente do servidor', () => {
   }
 
   /**
-   * Globais que o core nunca lê: APIs de navegador e de Node, timers, logs, geração de
-   * identificadores e avaliação de código.
+   * Globals that the core never reads: browser and Node APIs, timers, logs, identifier generation
+   * and code evaluation.
    */
   const FORBIDDEN_GLOBALS = [
     'window',
@@ -79,7 +79,7 @@ describe('ambiente do servidor', () => {
   ] as const;
 
   for (const name of FORBIDDEN_GLOBALS) {
-    it(`o core nunca lê o global ${name}`, () => {
+    it(`the core never reads the global ${name}`, () => {
       const reads = countGlobalReads(name, exerciseCore);
 
       assert.equal(reads, 0);
@@ -87,11 +87,11 @@ describe('ambiente do servidor', () => {
   }
 });
 
-/** Ação de decisão da receita, chamada pela interface no lugar da ação do gerenciador. */
+/** Decision action of the recipe, called by the interface instead of the action of the manager. */
 interface RecipeAction {
   readonly action: string;
   readonly act: (actions: StoredConsent<PurposeId>) => void;
-  /** Registro que a ação grava a partir do estado inicial, sem decisões. */
+  /** Record that the action writes from the initial state, without decisions. */
   readonly saved: string;
 }
 
@@ -126,7 +126,7 @@ const RECIPE_ACTIONS = [
   },
 ] as const satisfies readonly RecipeAction[];
 
-/** Duas abas ligadas ao mesmo armazenamento: A concede o que grantAll alcança e B sincroniza. */
+/** Two tabs connected to the same storage: A grants what grantAll reaches and B syncs. */
 function syncedTabs() {
   const store = createMemoryStore();
   const tabA = setup();
@@ -138,16 +138,16 @@ function syncedTabs() {
   return { store, tabA, actionsA, tabB, actionsB };
 }
 
-/** Depois da sincronização, A revoga analytics, e B, sem receber evento, fica desatualizada. */
+/** After the sync, A revokes analytics, and B, without receiving an event, becomes outdated. */
 function staleTabB() {
   const tabs = syncedTabs();
   tabs.actionsA.decide({ analytics: 'denied' });
-  tabs.tabB.changes.length = 0; // a sincronização de B já registrou um 'restore'
+  tabs.tabB.changes.length = 0; // the sync of B already recorded a 'restore'
   return tabs;
 }
 
-describe('duas abas ligadas pela receita ao mesmo armazenamento', () => {
-  it('B passa a ver as concessões de A ao sincronizar', () => {
+describe('two tabs connected by the recipe to the same storage', () => {
+  it('B sees the grants of A when syncing', () => {
     const { tabB } = syncedTabs();
 
     assert.deepStrictEqual(tabB.consent.getSnapshot().status, {
@@ -157,7 +157,7 @@ describe('duas abas ligadas pela receita ao mesmo armazenamento', () => {
     });
   });
 
-  it('o registro salvo mantém a revogação de A e recebe a recusa de B', () => {
+  it('the saved record keeps the revocation of A and receives the refusal of B', () => {
     const { store, actionsB } = staleTabB();
 
     actionsB.decide({ ads: 'denied' });
@@ -172,7 +172,7 @@ describe('duas abas ligadas pela receita ao mesmo armazenamento', () => {
     );
   });
 
-  it('B passa a ver analytics recusada', () => {
+  it('B sees analytics denied', () => {
     const { tabB, actionsB } = staleTabB();
 
     actionsB.decide({ ads: 'denied' });
@@ -181,7 +181,7 @@ describe('duas abas ligadas pela receita ao mesmo armazenamento', () => {
   });
 
   for (const { action, act } of RECIPE_ACTIONS) {
-    it(`${action} da receita em B adota o registro salvo antes de decidir: origens restore e decision`, () => {
+    it(`${action} of the recipe in B adopts the saved record before deciding: sources restore and decision`, () => {
       const { tabB, actionsB } = staleTabB();
 
       act(actionsB);
@@ -194,8 +194,8 @@ describe('duas abas ligadas pela receita ao mesmo armazenamento', () => {
   }
 });
 
-describe('garantias da receita: leitura e gravação do registro', () => {
-  it('conectar adota o registro salvo', () => {
+describe('guarantees of the recipe: reading and writing the record', () => {
+  it('connecting adopts the saved record', () => {
     const store = createMemoryStore(serialized({ ads: decisionOf('granted') }));
     const { consent } = setup();
 
@@ -204,7 +204,7 @@ describe('garantias da receita: leitura e gravação do registro', () => {
     assert.equal(consent.getSnapshot().status.ads, 'granted');
   });
 
-  it('conectar não gera notificação de decisão nem gravação', () => {
+  it('connecting produces neither a decision notification nor a write', () => {
     const store = createMemoryStore(serialized({ ads: decisionOf('granted') }));
     const { consent, changes } = setup();
 
@@ -217,7 +217,7 @@ describe('garantias da receita: leitura e gravação do registro', () => {
     assert.equal(store.writes, 0);
   });
 
-  it('restaurações nunca gravam, nem por sync nem por restore direto', () => {
+  it('restores never write, neither by sync nor by a direct restore', () => {
     const store = createMemoryStore();
     const { consent } = setup();
     const actions = connectStore(consent, store);
@@ -230,7 +230,7 @@ describe('garantias da receita: leitura e gravação do registro', () => {
   });
 
   for (const { action, act, saved } of RECIPE_ACTIONS) {
-    it(`${action} da receita grava o registro resultante`, () => {
+    it(`${action} of the recipe writes the resulting record`, () => {
       const store = createMemoryStore();
       const { consent } = setup();
       const actions = connectStore(consent, store);
@@ -241,7 +241,7 @@ describe('garantias da receita: leitura e gravação do registro', () => {
     });
   }
 
-  it('cada decisão grava o registro completo, e não só a finalidade alterada', () => {
+  it('each decision writes the complete record, not only the changed purpose', () => {
     const analytics = decisionOf('granted', { version: '2026-10' });
     const store = createMemoryStore(serialized({ analytics }));
     const { consent } = setup();
@@ -252,7 +252,7 @@ describe('garantias da receita: leitura e gravação do registro', () => {
     assert.equal(store.value, serialized({ analytics, ads: decisionOf('denied') }));
   });
 
-  it('sync com o valor salvo inalterado não notifica', () => {
+  it('sync with the saved value unchanged does not notify', () => {
     const store = createMemoryStore(serialized({ ads: decisionOf('granted') }));
     const { consent, changes } = setup();
     const actions = connectStore(consent, store);
@@ -263,19 +263,19 @@ describe('garantias da receita: leitura e gravação do registro', () => {
     assert.equal(changes.length, notified);
   });
 
-  it('depois de uma gravação desta página, sync adota a remoção do registro feita por outra aba', () => {
+  it('after a write of this page, sync adopts the removal of the record made by another tab', () => {
     const store = createMemoryStore();
     const { consent } = setup();
     const actions = connectStore(consent, store);
     actions.decide({ ads: 'granted' });
-    store.value = null; // outra aba removeu o registro depois de uma gravação que falhou
+    store.value = null; // another tab removed the record after a write that failed
 
     actions.sync();
 
     assert.equal(consent.getSnapshot().status.ads, 'pending');
   });
 
-  it('registro salvo inválido resulta em todas as finalidades pending, sem erro', () => {
+  it('an invalid saved record results in every purpose pending, without error', () => {
     const store = createMemoryStore('{"format":1,"decisions":');
     const { consent } = setup();
 
@@ -289,8 +289,8 @@ describe('garantias da receita: leitura e gravação do registro', () => {
   });
 });
 
-describe('falhas do armazenamento', () => {
-  it('gravação que falha remove o registro salvo e mantém a decisão em memória', () => {
+describe('storage failures', () => {
+  it('a write that fails removes the saved record and keeps the decision in memory', () => {
     const store = createMemoryStore(serialized({ ads: decisionOf('granted') }));
     const { consent } = setup();
     const actions = connectStore(consent, store);
@@ -302,7 +302,7 @@ describe('falhas do armazenamento', () => {
     assert.equal(consent.getSnapshot().status.ads, 'denied');
   });
 
-  it('a sincronização seguinte a uma gravação que falhou não apaga as decisões da página', () => {
+  it('the sync after a write that failed does not erase the decisions of the page', () => {
     const store = createMemoryStore(serialized({ ads: decisionOf('granted') }));
     const { consent } = setup();
     const actions = connectStore(consent, store);
@@ -315,7 +315,7 @@ describe('falhas do armazenamento', () => {
     assert.equal(consent.getSnapshot().status.ads, 'denied');
   });
 
-  it('se a remoção também falha, a decisão vale só nesta página, sem erro', () => {
+  it('if the removal also fails, the decision holds only in this page, without error', () => {
     const store = createMemoryStore(serialized({ ads: decisionOf('granted') }));
     const { consent } = setup();
     const actions = connectStore(consent, store);
@@ -329,7 +329,7 @@ describe('falhas do armazenamento', () => {
     assert.equal(consent.getSnapshot().status.ads, 'denied');
   });
 
-  it('leitura que falha mantém o estado em memória', () => {
+  it('a read that fails keeps the state in memory', () => {
     const store = createMemoryStore();
     const { consent } = setup();
     const actions = connectStore(consent, store);
@@ -343,8 +343,8 @@ describe('falhas do armazenamento', () => {
   });
 });
 
-describe('gravação descartada sem exceção, como a de um cookie recusado', () => {
-  /** Conecta ao registro que concede ads e a revoga pela receita, com a gravação descartada. */
+describe('a write discarded without exception, like the one of a rejected cookie', () => {
+  /** Connects to the record that grants ads and revokes it through the recipe, with the write discarded. */
   function revokeWithDiscardedWrite({ discardRemove }: { readonly discardRemove: boolean }) {
     const store = createMemoryStore(serialized({ ads: decisionOf('granted') }));
     const { consent } = setup();
@@ -355,13 +355,13 @@ describe('gravação descartada sem exceção, como a de um cookie recusado', ()
     return { store, consent, actions };
   }
 
-  it('a gravação não se confirma pela leitura, e o registro salvo, mais permissivo, é removido', () => {
+  it('the write is not confirmed by the read, and the saved record, more permissive, is removed', () => {
     const { store } = revokeWithDiscardedWrite({ discardRemove: false });
 
     assert.equal(store.value, null);
   });
 
-  it('a sincronização seguinte não desfaz a revogação', () => {
+  it('the next sync does not undo the revocation', () => {
     const { consent, actions } = revokeWithDiscardedWrite({ discardRemove: false });
 
     actions.sync();
@@ -369,7 +369,7 @@ describe('gravação descartada sem exceção, como a de um cookie recusado', ()
     assert.equal(consent.getSnapshot().status.ads, 'denied');
   });
 
-  it('com a remoção também descartada, a sincronização não readota o registro que restou', () => {
+  it('with the removal also discarded, the sync does not adopt again the record that is left', () => {
     const { consent, actions } = revokeWithDiscardedWrite({ discardRemove: true });
 
     actions.sync();
@@ -378,8 +378,8 @@ describe('gravação descartada sem exceção, como a de um cookie recusado', ()
   });
 });
 
-describe('leitura que falha antes de uma decisão em aba desatualizada', () => {
-  /** B, desatualizada, recusa ads pela receita, e só a leitura do sync anterior à decisão falha. */
+describe('a read that fails before a decision in an outdated tab', () => {
+  /** B, outdated, refuses ads through the recipe, and only the read of the sync before the decision fails. */
   function decideInStaleTabWithFailedRead() {
     const tabs = staleTabB();
     tabs.store.failNextRead = true;
@@ -387,13 +387,13 @@ describe('leitura que falha antes de uma decisão em aba desatualizada', () => {
     return tabs;
   }
 
-  it('B não grava a memória, que pode estar desatualizada: o registro salvo é removido', () => {
+  it('B does not write the memory, which may be outdated: the saved record is removed', () => {
     const { store } = decideInStaleTabWithFailedRead();
 
     assert.equal(store.value, null);
   });
 
-  it('A fica com analytics pending ao sincronizar, sem readotar a concessão que revogou', () => {
+  it('A has analytics pending when syncing, without adopting again the grant it revoked', () => {
     const { tabA, actionsA } = decideInStaleTabWithFailedRead();
 
     actionsA.sync();
@@ -401,13 +401,13 @@ describe('leitura que falha antes de uma decisão em aba desatualizada', () => {
     assert.equal(tabA.consent.getSnapshot().status.analytics, 'pending');
   });
 
-  it('B mantém em memória a decisão registrada', () => {
+  it('B keeps in memory the recorded decision', () => {
     const { tabB } = decideInStaleTabWithFailedRead();
 
     assert.equal(tabB.consent.getSnapshot().status.ads, 'denied');
   });
 
-  it('com a leitura de volta, B adota a remoção antes de decidir e não regrava a memória desatualizada', () => {
+  it('with the read back, B adopts the removal before deciding and does not write back the outdated memory', () => {
     const { store, actionsB } = decideInStaleTabWithFailedRead();
 
     actionsB.decide({ analytics: 'denied' });
@@ -418,7 +418,7 @@ describe('leitura que falha antes de uma decisão em aba desatualizada', () => {
     );
   });
 
-  it('com a leitura indisponível também depois da remoção, a sincronização seguinte adota a remoção', () => {
+  it('with the read also unavailable after the removal, the next sync adopts the removal', () => {
     const { store, tabB, actionsB } = staleTabB();
     store.failRead = true;
     actionsB.decide({ ads: 'denied' });
@@ -430,11 +430,11 @@ describe('leitura que falha antes de uma decisão em aba desatualizada', () => {
   });
 });
 
-describe('registro externo adotado pela aplicação com adopt', () => {
-  /** Registro carregado do backend da aplicação, que revoga analytics. */
+describe('an external record adopted by the application with adopt', () => {
+  /** Record loaded from the application backend, which revokes analytics. */
   const BACKEND_RECORD = serialized({ analytics: decisionOf('denied', { version: '2026-10' }) });
 
-  it('adopt substitui as decisões em memória pelas do registro externo', () => {
+  it('adopt replaces the decisions in memory with the ones of the external record', () => {
     const { tabA, actionsA } = syncedTabs();
 
     actionsA.adopt(BACKEND_RECORD);
@@ -446,7 +446,7 @@ describe('registro externo adotado pela aplicação com adopt', () => {
     });
   });
 
-  it('adopt grava o registro adotado no armazenamento', () => {
+  it('adopt writes the adopted record to the storage', () => {
     const { store, actionsA } = syncedTabs();
 
     actionsA.adopt(BACKEND_RECORD);
@@ -454,7 +454,7 @@ describe('registro externo adotado pela aplicação com adopt', () => {
     assert.equal(store.value, BACKEND_RECORD);
   });
 
-  it('a outra aba recebe o registro adotado ao sincronizar', () => {
+  it('the other tab receives the adopted record when syncing', () => {
     const { tabB, actionsA, actionsB } = syncedTabs();
 
     actionsA.adopt(BACKEND_RECORD);
@@ -464,17 +464,20 @@ describe('registro externo adotado pela aplicação com adopt', () => {
   });
 });
 
-describe('docs/persistencia.md reproduz a receita literalmente', () => {
-  /** Conteúdo do primeiro bloco de código TypeScript depois do título `heading` no guia. */
+describe('docs/persistencia.md reproduces the recipe verbatim', () => {
+  /** Content of the first TypeScript code block after the heading `heading` in the guide. */
   function guideBlockAfter(heading: string): string | undefined {
-    const guide = readFileSync(new URL('../docs/persistencia.md', import.meta.url), 'utf8');
+    const guide = readFileSync(new URL('../../docs/persistencia.md', import.meta.url), 'utf8');
     const start = guide.indexOf(heading);
     if (start === -1) return undefined;
     return /```ts\r?\n([\s\S]*?)```/.exec(guide.slice(start))?.[1];
   }
 
-  it('o bloco da seção "Receita (consent-store.ts)" é idêntico a examples/consent-store.ts', () => {
-    const recipe = readFileSync(new URL('../examples/consent-store.ts', import.meta.url), 'utf8');
+  it('the block of the section "Receita (consent-store.ts)" is identical to examples/consent-store.ts', () => {
+    const recipe = readFileSync(
+      new URL('../../examples/consent-store.ts', import.meta.url),
+      'utf8',
+    );
 
     assert.equal(guideBlockAfter('## Receita (`consent-store.ts`)'), recipe);
   });

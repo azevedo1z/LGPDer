@@ -4,24 +4,24 @@ import { setImmediate } from 'node:timers/promises';
 
 import type { ConsentChange, ConsentManager, ConsentStatus } from 'lgpder';
 
-import { decisionOf, recordOf } from './support/records.ts';
-import { callUntyped, setup, type PurposeId } from './support/setup.ts';
+import { decisionOf, recordOf } from '../support/records.ts';
+import { callUntyped, setup, type PurposeId } from '../support/setup.ts';
 
-/** `analytics` e `ads` concedidas: tudo o que `grantAll` alcança na fixture. */
+/** `analytics` and `ads` granted: everything `grantAll` reaches in the fixture. */
 const ELIGIBLE_GRANTED = recordOf({
   analytics: decisionOf('granted', { version: '2026-10' }),
   ads: decisionOf('granted'),
 });
 
-/** Todas as finalidades da fixture recusadas. */
+/** Every purpose of the fixture denied. */
 const ALL_DENIED = recordOf({
   analytics: decisionOf('denied', { version: '2026-10' }),
   ads: decisionOf('denied'),
   health: decisionOf('denied', { version: '1' }),
 });
 
-describe('inscrição e cancelamento', () => {
-  it('subscribe devolve a função que cancela a inscrição', () => {
+describe('subscription and cancellation', () => {
+  it('subscribe returns the function that cancels the subscription', () => {
     const { consent } = setup();
     const received: ConsentChange<PurposeId>[] = [];
     const unsubscribe = consent.subscribe((change) => {
@@ -34,13 +34,13 @@ describe('inscrição e cancelamento', () => {
     assert.deepStrictEqual(received, []);
   });
 
-  it('subscribe com valor que não é função lança TypeError', () => {
+  it('subscribe with a value that is not a function throws TypeError', () => {
     const { consent } = setup();
 
     assert.throws(() => callUntyped(consent.subscribe, 'x'), TypeError);
   });
 
-  it('a mesma função inscrita duas vezes é chamada duas vezes por notificação', () => {
+  it('the same function subscribed twice is called twice per notification', () => {
     const { consent } = setup();
     let calls = 0;
     const listener = (): void => {
@@ -54,7 +54,7 @@ describe('inscrição e cancelamento', () => {
     assert.equal(calls, 2);
   });
 
-  it('cancelar duas vezes a mesma inscrição remove só ela', () => {
+  it('cancelling the same subscription twice removes only it', () => {
     const { consent } = setup();
     let calls = 0;
     const listener = (): void => {
@@ -71,8 +71,8 @@ describe('inscrição e cancelamento', () => {
   });
 });
 
-describe('há notificação se e somente se o registro muda', () => {
-  it('criação e hidratação não notificam, nem depois de uma volta do laço de eventos', async () => {
+describe('there is a notification if and only if the record changes', () => {
+  it('creation and hydration do not notify, not even after a turn of the event loop', async () => {
     const { changes } = setup({ record: ELIGIBLE_GRANTED });
 
     await setImmediate();
@@ -95,28 +95,28 @@ describe('há notificação se e somente se o registro muda', () => {
       },
     },
     {
-      operation: 'decide que reconfirma a situação vigente',
+      operation: 'decide that reconfirms the current status',
       record: ELIGIBLE_GRANTED,
       act: (consent) => {
         consent.decide({ ads: 'granted' });
       },
     },
     {
-      operation: 'grantAll sem finalidade elegível a mudar',
+      operation: 'grantAll without an eligible purpose to change',
       record: ELIGIBLE_GRANTED,
       act: (consent) => {
         consent.grantAll();
       },
     },
     {
-      operation: 'denyAll sem finalidade a mudar',
+      operation: 'denyAll without a purpose to change',
       record: ALL_DENIED,
       act: (consent) => {
         consent.denyAll();
       },
     },
     {
-      operation: 'restore do registro atual',
+      operation: 'restore of the current record',
       record: ELIGIBLE_GRANTED,
       act: (consent) => {
         consent.restore(consent.getSnapshot().record);
@@ -125,7 +125,7 @@ describe('há notificação se e somente se o registro muda', () => {
   ] as const satisfies readonly SilentOperation[];
 
   for (const { operation, record, act } of SILENT_OPERATIONS) {
-    it(`${operation} não notifica`, () => {
+    it(`${operation} does not notify`, () => {
       const { consent, changes } = setup({ record });
 
       act(consent);
@@ -135,8 +135,8 @@ describe('há notificação se e somente se o registro muda', () => {
   }
 });
 
-describe('formato da notificação', () => {
-  it('tem as chaves source, changed, snapshot e previous, nessa ordem', () => {
+describe('shape of the notification', () => {
+  it('has the keys source, changed, snapshot and previous, in this order', () => {
     const { consent, changes } = setup();
 
     consent.decide({ ads: 'granted' });
@@ -146,7 +146,7 @@ describe('formato da notificação', () => {
     assert.deepStrictEqual(Object.keys(change), ['source', 'changed', 'snapshot', 'previous']);
   });
 
-  it('snapshot é o estado confirmado pela alteração', () => {
+  it('snapshot is the state committed by the change', () => {
     const { consent, changes } = setup();
 
     consent.decide({ ads: 'granted' });
@@ -156,7 +156,7 @@ describe('formato da notificação', () => {
     assert.equal(change.snapshot, consent.getSnapshot());
   });
 
-  it('previous é o snapshot imediatamente anterior à alteração', () => {
+  it('previous is the snapshot right before the change', () => {
     const { consent, changes } = setup();
     consent.decide({ analytics: 'granted' });
     const before = consent.getSnapshot();
@@ -169,26 +169,26 @@ describe('formato da notificação', () => {
   });
 });
 
-describe('ordem de uma operação efetiva', () => {
-  it('os ouvintes são chamados na ordem de inscrição', () => {
+describe('order of an effective operation', () => {
+  it('the listeners are called in subscription order', () => {
     const { consent } = setup();
     const order: string[] = [];
     consent.subscribe(() => {
-      order.push('primeiro');
+      order.push('first');
     });
     consent.subscribe(() => {
-      order.push('segundo');
+      order.push('second');
     });
     consent.subscribe(() => {
-      order.push('terceiro');
+      order.push('third');
     });
 
     consent.decide({ ads: 'granted' });
 
-    assert.deepStrictEqual(order, ['primeiro', 'segundo', 'terceiro']);
+    assert.deepStrictEqual(order, ['first', 'second', 'third']);
   });
 
-  it('durante a notificação, getSnapshot já devolve o snapshot confirmado', () => {
+  it('during the notification, getSnapshot already returns the committed snapshot', () => {
     const { consent } = setup();
     let seen: ConsentStatus | undefined;
     consent.subscribe(() => {
@@ -200,7 +200,7 @@ describe('ordem de uma operação efetiva', () => {
     assert.equal(seen, 'granted');
   });
 
-  it('a notificação é entregue de forma síncrona, antes de a chamada retornar', () => {
+  it('the notification is delivered synchronously, before the call returns', () => {
     const { consent, changes } = setup();
 
     consent.decide({ ads: 'granted' });
@@ -208,7 +208,7 @@ describe('ordem de uma operação efetiva', () => {
     assert.equal(changes.length, 1);
   });
 
-  it('fora de ouvintes, a chamada só retorna depois de entregar também as notificações enfileiradas', () => {
+  it('outside listeners, the call only returns after also delivering the queued notifications', () => {
     const { consent, changes } = setup();
     consent.subscribe(({ changed }) => {
       if (changed.includes('analytics')) consent.decide({ ads: 'denied' });
@@ -223,8 +223,8 @@ describe('ordem de uma operação efetiva', () => {
   });
 });
 
-describe('erro de ouvinte', () => {
-  /** Troca o queueMicrotask global por um coletor, para que o erro relançado não encerre o teste. */
+describe('listener error', () => {
+  /** Replaces the global queueMicrotask with a collector, so the rethrown error does not end the test. */
   function captureMicrotasks(t: TestContext): (() => void)[] {
     const scheduled: (() => void)[] = [];
     t.mock.method(globalThis, 'queueMicrotask', (callback: () => void) => {
@@ -233,56 +233,56 @@ describe('erro de ouvinte', () => {
     return scheduled;
   }
 
-  it('os ouvintes seguintes são chamados e a operação retorna normalmente', (t) => {
+  it('the next listeners are called and the operation returns normally', (t) => {
     captureMicrotasks(t);
     const { consent } = setup();
     const calls: string[] = [];
     consent.subscribe(() => {
-      throw new Error('ouvinte com defeito');
+      throw new Error('faulty listener');
     });
     consent.subscribe(() => {
-      calls.push('seguinte');
+      calls.push('next');
     });
 
     assert.doesNotThrow(() => {
       consent.decide({ ads: 'granted' });
     });
 
-    assert.deepStrictEqual(calls, ['seguinte']);
+    assert.deepStrictEqual(calls, ['next']);
   });
 
-  it('agenda, pelo queueMicrotask global vigente, trocado depois da importação, uma microtarefa por erro, no momento do erro', (t) => {
+  it('schedules, through the global queueMicrotask in effect, replaced after import, one microtask per error, when the error happens', (t) => {
     const log: string[] = [];
     t.mock.method(globalThis, 'queueMicrotask', () => {
-      log.push('microtarefa agendada');
+      log.push('microtask scheduled');
     });
     const { consent } = setup();
     consent.subscribe(() => {
-      log.push('primeiro ouvinte');
-      throw new Error('primeiro defeito');
+      log.push('first listener');
+      throw new Error('first defect');
     });
     consent.subscribe(() => {
-      log.push('segundo ouvinte');
-      throw new Error('segundo defeito');
+      log.push('second listener');
+      throw new Error('second defect');
     });
     consent.subscribe(() => {
-      log.push('terceiro ouvinte');
+      log.push('third listener');
     });
 
     consent.decide({ ads: 'granted' });
 
     assert.deepStrictEqual(log, [
-      'primeiro ouvinte',
-      'microtarefa agendada',
-      'segundo ouvinte',
-      'microtarefa agendada',
-      'terceiro ouvinte',
+      'first listener',
+      'microtask scheduled',
+      'second listener',
+      'microtask scheduled',
+      'third listener',
     ]);
   });
 
-  it('a microtarefa agendada relança intacto o valor lançado pelo ouvinte', (t) => {
+  it('the scheduled microtask rethrows intact the value thrown by the listener', (t) => {
     const scheduled = captureMicrotasks(t);
-    const failure = new Error('ouvinte com defeito');
+    const failure = new Error('faulty listener');
     const { consent } = setup();
     consent.subscribe(() => {
       throw failure;
@@ -296,8 +296,8 @@ describe('erro de ouvinte', () => {
   });
 });
 
-describe('reentrância', () => {
-  it('decide chamado dentro de um ouvinte é confirmado na hora', () => {
+describe('reentrancy', () => {
+  it('decide called inside a listener is committed at once', () => {
     const { consent } = setup();
     let statusInsideListener: ConsentStatus | undefined;
     consent.subscribe(({ changed }) => {
@@ -311,31 +311,31 @@ describe('reentrância', () => {
     assert.equal(statusInsideListener, 'denied');
   });
 
-  it('a chamada reentrante retorna antes de sua notificação, entregue depois da atual a todos, na mesma ordem', () => {
+  it('the reentrant call returns before its notification, delivered after the current one to everyone, in the same order', () => {
     const { consent } = setup();
     const log: string[] = [];
     consent.subscribe(({ changed }) => {
-      log.push(`primeiro ouvinte: ${changed.join()}`);
+      log.push(`first listener: ${changed.join()}`);
       if (!changed.includes('analytics')) return;
       consent.decide({ ads: 'denied' });
-      log.push('decide reentrante retornou');
+      log.push('reentrant decide returned');
     });
     consent.subscribe(({ changed }) => {
-      log.push(`segundo ouvinte: ${changed.join()}`);
+      log.push(`second listener: ${changed.join()}`);
     });
 
     consent.decide({ analytics: 'granted' });
 
     assert.deepStrictEqual(log, [
-      'primeiro ouvinte: analytics',
-      'decide reentrante retornou',
-      'segundo ouvinte: analytics',
-      'primeiro ouvinte: ads',
-      'segundo ouvinte: ads',
+      'first listener: analytics',
+      'reentrant decide returned',
+      'second listener: analytics',
+      'first listener: ads',
+      'second listener: ads',
     ]);
   });
 
-  it('o previous de cada notificação é o snapshot da notificação anterior', () => {
+  it('the previous of each notification is the snapshot of the previous notification', () => {
     const { consent, changes } = setup();
     consent.subscribe(({ changed }) => {
       if (changed.includes('analytics')) consent.decide({ ads: 'denied' });
@@ -348,7 +348,7 @@ describe('reentrância', () => {
     assert.equal(second.previous, first.snapshot);
   });
 
-  it('duas chamadas reentrantes no mesmo ouvinte são entregues na ordem de confirmação (FIFO)', () => {
+  it('two reentrant calls in the same listener are delivered in commit order (FIFO)', () => {
     const { consent, changes } = setup();
     consent.subscribe(({ changed }) => {
       if (!changed.includes('analytics')) return;
@@ -364,7 +364,7 @@ describe('reentrância', () => {
     );
   });
 
-  it('restore chamado dentro de um ouvinte é confirmado na hora', () => {
+  it('restore called inside a listener is committed at once', () => {
     const { consent } = setup();
     let statusInsideListener: ConsentStatus | undefined;
     consent.subscribe(({ source }) => {
@@ -378,7 +378,7 @@ describe('reentrância', () => {
     assert.equal(statusInsideListener, 'pending');
   });
 
-  it('restore chamado dentro de um ouvinte é notificado depois da notificação atual', () => {
+  it('restore called inside a listener is notified after the current notification', () => {
     const { consent } = setup();
     const sources: string[] = [];
     consent.subscribe(({ source }) => {
@@ -394,15 +394,15 @@ describe('reentrância', () => {
   });
 });
 
-describe('cancelamento durante a entrega', () => {
-  it('ouvinte cancelado por outro durante a entrega não recebe nem a notificação atual', () => {
+describe('cancellation during delivery', () => {
+  it('a listener cancelled by another during delivery does not receive even the current notification', () => {
     const { consent } = setup();
     const received: string[] = [];
     consent.subscribe(() => {
       cancelSecond();
     });
     const cancelSecond = consent.subscribe(() => {
-      received.push('segundo');
+      received.push('second');
     });
 
     consent.decide({ ads: 'granted' });
@@ -410,7 +410,7 @@ describe('cancelamento durante a entrega', () => {
     assert.deepStrictEqual(received, []);
   });
 
-  it('ouvinte que cancela a si mesmo não recebe as notificações já enfileiradas', () => {
+  it('a listener that cancels itself does not receive the notifications already queued', () => {
     const { consent } = setup();
     const received: string[] = [];
     const unsubscribe = consent.subscribe(({ changed }) => {
@@ -425,8 +425,8 @@ describe('cancelamento durante a entrega', () => {
   });
 });
 
-describe('inscrição durante a entrega', () => {
-  it('recebe só as alterações confirmadas depois dela', () => {
+describe('subscription during delivery', () => {
+  it('receives only the changes committed after it', () => {
     const { consent } = setup();
     const late: string[] = [];
     consent.subscribe(({ changed }) => {
@@ -444,8 +444,8 @@ describe('inscrição durante a entrega', () => {
   });
 });
 
-describe('sem limite de cascata', () => {
-  it('alterações encadeadas por um ouvinte são todas entregues', () => {
+describe('no cascade limit', () => {
+  it('changes chained by a listener are all delivered', () => {
     const { consent, changes } = setup();
     consent.subscribe(({ snapshot }) => {
       if (changes.length >= 1_000) return;
@@ -458,8 +458,8 @@ describe('sem limite de cascata', () => {
   });
 });
 
-describe('argumento e retorno do ouvinte', () => {
-  it('o ouvinte é chamado sem this', () => {
+describe('argument and return value of the listener', () => {
+  it('the listener is called without this', () => {
     const { consent } = setup();
     const receivers: unknown[] = [];
     consent.subscribe(function (this: unknown) {
@@ -471,7 +471,7 @@ describe('argumento e retorno do ouvinte', () => {
     assert.deepStrictEqual(receivers, [undefined]);
   });
 
-  it('o ouvinte recebe a notificação como único argumento', () => {
+  it('the listener receives the notification as its only argument', () => {
     const { consent } = setup();
     const argumentCounts: number[] = [];
     consent.subscribe((...args: unknown[]) => {
@@ -483,20 +483,20 @@ describe('argumento e retorno do ouvinte', () => {
     assert.deepStrictEqual(argumentCounts, [1]);
   });
 
-  it('o valor devolvido é ignorado: devolver false não interrompe os ouvintes seguintes', () => {
+  it('the returned value is ignored: returning false does not stop the next listeners', () => {
     const { consent } = setup();
     const calls: string[] = [];
     consent.subscribe(() => false);
     consent.subscribe(() => {
-      calls.push('seguinte');
+      calls.push('next');
     });
 
     consent.decide({ ads: 'granted' });
 
-    assert.deepStrictEqual(calls, ['seguinte']);
+    assert.deepStrictEqual(calls, ['next']);
   });
 
-  it('ouvinte sem parâmetros, como o callback do useSyncExternalStore, funciona', () => {
+  it('a listener without parameters, like the useSyncExternalStore callback, works', () => {
     const { consent } = setup();
     let storeChanges = 0;
     const onStoreChange = (): void => {

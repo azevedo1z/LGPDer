@@ -3,13 +3,13 @@ import { describe, it } from 'node:test';
 
 import type { ConsentRecord } from 'lgpder';
 
-import { decisionOf, recordOf, serialized } from './support/records.ts';
-import { START, setup, withObjectPollution, type PurposeId } from './support/setup.ts';
+import { decisionOf, recordOf, serialized } from '../support/records.ts';
+import { START, setup, withObjectPollution, type PurposeId } from '../support/setup.ts';
 
 const ANALYTICS_GRANTED = decisionOf('granted', { version: '2026-10' });
 
-describe('restore substitui todas as decisões pelo conteúdo válido, sem mesclar', () => {
-  it('as decisões ausentes do registro adotado são removidas', () => {
+describe('restore replaces every decision with the valid content, without merging', () => {
+  it('the decisions missing from the adopted record are removed', () => {
     const { consent } = setup();
     consent.decide({ analytics: 'granted', ads: 'denied' });
 
@@ -19,18 +19,10 @@ describe('restore substitui todas as decisões pelo conteúdo válido, sem mescl
       health: decisionOf('denied', { version: '1' }),
     });
   });
-
-  it('não chama o relógio', () => {
-    const { consent, clock } = setup();
-
-    consent.restore(recordOf({ ads: decisionOf('granted') }));
-
-    assert.equal(clock.calls(), 0);
-  });
 });
 
-describe('comparação entrada a entrada e notificação', () => {
-  it('uma notificação de origem restore, com adicionadas, removidas e alteradas em ordem', () => {
+describe('entry-by-entry comparison and notification', () => {
+  it('one notification with source restore, with added, removed and changed entries in order', () => {
     const { consent, changes } = setup({
       record: recordOf({ analytics: ANALYTICS_GRANTED, ads: decisionOf('granted') }),
     });
@@ -46,17 +38,17 @@ describe('comparação entrada a entrada e notificação', () => {
   });
 
   const SINGLE_FIELD_CHANGES = [
-    { difference: 'no status', next: decisionOf('denied', { version: '2026-10' }) },
-    { difference: 'na version', next: decisionOf('granted', { version: '2025-01' }) },
+    { difference: 'in the status', next: decisionOf('denied', { version: '2026-10' }) },
+    { difference: 'in the version', next: decisionOf('granted', { version: '2025-01' }) },
     {
-      difference: 'no decidedAt',
-      next: decisionOf('granted', { version: '2026-10', decidedAt: START + 1 }),
+      difference: 'in decidedAt',
+      next: decisionOf('granted', { version: '2026-10', decidedAt: START - 1 }),
     },
-    { difference: 'na presença de version', next: decisionOf('granted') },
+    { difference: 'in the presence of version', next: decisionOf('granted') },
   ] as const;
 
   for (const { difference, next } of SINGLE_FIELD_CHANGES) {
-    it(`entrada que difere só ${difference} é alterada e notificada`, () => {
+    it(`an entry that differs only ${difference} is changed and notified`, () => {
       const { consent, changes } = setup({ record: recordOf({ analytics: ANALYTICS_GRANTED }) });
 
       consent.restore(recordOf({ analytics: next }));
@@ -68,7 +60,7 @@ describe('comparação entrada a entrada e notificação', () => {
     });
   }
 
-  it('version herdada de Object.prototype poluído não iguala decisão sem version a decisão com version', () => {
+  it('a version inherited from a polluted Object.prototype does not make a decision without version equal to one with version', () => {
     const { consent, changes } = setup({ record: recordOf({ ads: decisionOf('granted') }) });
 
     withObjectPollution({ version: '1' }, () => {
@@ -84,12 +76,12 @@ describe('comparação entrada a entrada e notificação', () => {
     );
   });
 
-  it('mudança só de decidedAt notifica restore com a finalidade em changed e mantém status', () => {
+  it('a change only of decidedAt notifies restore with the purpose in changed and keeps status', () => {
     const { consent, changes } = setup({ record: recordOf({ analytics: ANALYTICS_GRANTED }) });
     const before = consent.getSnapshot();
 
     consent.restore(
-      recordOf({ analytics: decisionOf('granted', { version: '2026-10', decidedAt: START + 1 }) }),
+      recordOf({ analytics: decisionOf('granted', { version: '2026-10', decidedAt: START - 1 }) }),
     );
 
     assert.deepStrictEqual(
@@ -100,23 +92,23 @@ describe('comparação entrada a entrada e notificação', () => {
   });
 });
 
-describe('restore sem nenhuma entrada diferente é no-op', () => {
+describe('restore without any different entry is a no-op', () => {
   interface RoundTrip {
     readonly form: string;
     readonly toInput: (record: ConsentRecord<PurposeId>) => unknown;
   }
 
   const ROUND_TRIPS = [
-    { form: 'objeto', toInput: (record) => record },
-    { form: 'texto JSON', toInput: (record) => JSON.stringify(record) },
+    { form: 'an object', toInput: (record) => record },
+    { form: 'JSON text', toInput: (record) => JSON.stringify(record) },
     {
-      form: 'objeto vindo de JSON.parse',
+      form: 'an object from JSON.parse',
       toInput: (record): unknown => JSON.parse(JSON.stringify(record)),
     },
   ] as const satisfies readonly RoundTrip[];
 
   for (const { form, toInput } of ROUND_TRIPS) {
-    it(`restore do próprio registro em ${form}: mesmo snapshot e nenhuma notificação`, () => {
+    it(`restore of its own record as ${form}: same snapshot and no notification`, () => {
       const { consent, changes } = setup({
         record: recordOf({ analytics: ANALYTICS_GRANTED, ads: decisionOf('denied') }),
       });
@@ -129,7 +121,7 @@ describe('restore sem nenhuma entrada diferente é no-op', () => {
     });
   }
 
-  it('restore(null) sem decisões: mesmo snapshot e nenhuma notificação', () => {
+  it('restore(null) without decisions: same snapshot and no notification', () => {
     const { consent, changes } = setup();
     const before = consent.getSnapshot();
 
@@ -140,8 +132,8 @@ describe('restore sem nenhuma entrada diferente é no-op', () => {
   });
 });
 
-describe('entradas iguais mantêm a referência da decisão atual', () => {
-  it('a decisão igual por valor, vinda de texto JSON, mantém o objeto atual', () => {
+describe('equal entries keep the reference of the current decision', () => {
+  it('a decision equal by value, coming from JSON text, keeps the current object', () => {
     const { consent } = setup({
       record: recordOf({ analytics: ANALYTICS_GRANTED, ads: decisionOf('granted') }),
     });
@@ -153,8 +145,8 @@ describe('entradas iguais mantêm a referência da decisão atual', () => {
   });
 });
 
-describe('restore adota um registro externo e não é revogação', () => {
-  it('restore(null) com decisões deixa todas as finalidades pending, e não denied, e notifica restore', () => {
+describe('restore adopts an external record and is not a revocation', () => {
+  it('restore(null) with decisions leaves every purpose pending, not denied, and notifies restore', () => {
     const { consent, changes } = setup();
     consent.grantAll();
 
@@ -171,7 +163,7 @@ describe('restore adota um registro externo e não é revogação', () => {
     );
   });
 
-  it('restore de registro antigo substitui uma revogação local mais recente', () => {
+  it('restore of an old record replaces a more recent local revocation', () => {
     const { consent, clock } = setup();
     consent.decide({ ads: 'granted' });
     const backendRecord = JSON.stringify(consent.getSnapshot().record);

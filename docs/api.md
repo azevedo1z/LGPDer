@@ -30,13 +30,13 @@ export declare function createConsentManager<P extends string, C extends string 
 ): ConsentManager<P, C>;
 ```
 
-Cria um gerenciador de consentimento. Os ids das finalidades e das categorias são inferidos como uniões literais a partir de `options.purposes` (`C` é `never` quando nenhuma finalidade declara categoria). A configuração é validada e copiada; `options.record`, se informado, é lido como dado não confiável. A criação não notifica e não chama o relógio.
+Cria um gerenciador de consentimento. Os ids das finalidades e das categorias são inferidos como uniões literais a partir de `options.purposes` (`C` é `never` quando nenhuma finalidade declara categoria). A configuração é validada e copiada; `options.record`, se informado como propriedade própria, é lido como dado não confiável. A criação não notifica. Ela chama o relógio no máximo uma vez, para avaliar a expiração das decisões hidratadas (veja [`maxAge`](#consentoptions)), e somente se `options.record` tem ao menos uma decisão válida.
 
-- Parâmetro `options` (`ConsentOptions<P, C>`): finalidades, registro salvo e relógio.
+- Parâmetro `options` (`ConsentOptions<P, C>`): finalidades, registro salvo, relógio e prazo de validade das decisões.
 - Retorno: gerenciador congelado (`ConsentManager<P, C>`).
-- Erros: `TypeError` para configuração inválida. A validação é síncrona e lança no primeiro problema, nesta ordem: `options` é objeto simples; cada chave de `options` é `purposes`, `record` ou `now`; `purposes` é objeto simples com ao menos uma finalidade; para cada finalidade, na ordem das chaves, o id é válido, a configuração é objeto simples, cada chave dela é `version`, `category` ou `individualGrant`, `version` é `undefined` ou texto não vazio, `category` é `undefined` ou id válido e `individualGrant` é `undefined` ou booleano; `now` é `undefined` ou função. `options.record` nunca causa erro. As mensagens estão em [Erros](#erros).
+- Erros: `TypeError` para configuração inválida. A validação é síncrona e lança no primeiro problema, nesta ordem: `options` é objeto simples; cada chave de `options` é `purposes`, `record`, `now` ou `maxAge`; `purposes` é objeto simples com ao menos uma finalidade; para cada finalidade, na ordem das chaves, o id é válido, a configuração é objeto simples, cada chave dela é `version`, `category` ou `individualGrant`, `version` é `undefined` ou texto não vazio, `category` é `undefined` ou id válido e `individualGrant` é `undefined` ou booleano; `now` é `undefined` ou função; `maxAge` é `undefined` ou inteiro seguro positivo. O conteúdo de `options.record` nunca causa erro. As mensagens estão em [Erros](#erros).
 
-Somente propriedades próprias enumeráveis com chave texto (as devolvidas por `Object.keys`) são consideradas em `options`, em `purposes` e em cada configuração: chaves símbolo, propriedades não enumeráveis e propriedades herdadas, inclusive de um `Object.prototype` poluído, são ignoradas. Cada propriedade é lida uma única vez. Exceções lançadas por getters ou proxies durante a validação se propagam sem efeito; na leitura de `options.record`, resultam em registro vazio. O objeto recebido não é alterado nem congelado, e alterá-lo depois da criação não tem efeito.
+A configuração é escrita pelo desenvolvedor e não é dado não confiável: os tipos e formatos são validados de forma direta, sem blindagem contra protótipo poluído. As chaves desconhecidas são procuradas entre as propriedades próprias enumeráveis com chave texto (as devolvidas por `Object.keys`) de `options`, de `purposes` e de cada configuração, e chaves símbolo são ignoradas. As exceções são `options.record`, porta de entrada do dado não confiável, e `now` e `maxAge`, que decidem se as decisões dele ainda valem: os três são lidos só como propriedades próprias, e um valor herdado de um protótipo poluído é ignorado, para nunca conceder finalidades sem ação do titular nem reviver uma decisão expirada. Exceções lançadas por getters ou proxies das opções, inclusive o de `record`, se propagam sem efeito. O objeto recebido não é alterado nem congelado, e alterá-lo depois da criação não tem efeito.
 
 ```ts
 import { createConsentManager } from 'lgpder';
@@ -57,6 +57,7 @@ Os demais exemplos deste documento usam este `consent`, cada um a partir do esta
 ```ts
 export interface ConsentManager<P extends string = string, C extends string = string> {
   readonly purposes: { readonly [K in P]: PurposeConfig<C> };
+  readonly maxAge: number;
   readonly getSnapshot: () => ConsentSnapshot<P>;
   readonly getServerSnapshot: () => ConsentSnapshot<P>;
   readonly decide: (choices: ConsentChoices<P>) => void;
@@ -82,6 +83,14 @@ Cópia congelada da configuração das finalidades, na ordem declarada. Cada con
 ```ts
 consent.purposes.ads; // { category: 'marketing' }
 consent.purposes.healthReminders; // { version: '1', category: 'health', individualGrant: true }
+```
+
+### `maxAge`
+
+Prazo de validade efetivo das decisões, em milissegundos: o valor da opção [`maxAge`](#consentoptions) ou o padrão de 365 dias. Serve para a persistência alinhar a duração do registro salvo, como o `Max-Age` de um cookie, à expiração das decisões, usando somente a API pública.
+
+```ts
+consent.maxAge; // 31536000000 (365 dias)
 ```
 
 ### `getSnapshot()`
@@ -158,12 +167,14 @@ Substitui todas as decisões pelo conteúdo válido de um registro externo (obje
 - Retorno: nenhum.
 - Erros: nunca lança.
 
-Notifica com origem `'restore'` se alguma entrada mudar. Duas entradas são iguais quando ambas estão ausentes ou quando têm o mesmo `status`, a mesma `version` e o mesmo `decidedAt`. Entradas iguais mantêm a referência atual, e se nenhuma entrada difere a chamada não tem efeito: `restore(consent.getSnapshot().record)`, em objeto ou em texto JSON, não muda nada. Adotar um registro vazio deixa as finalidades `'pending'`, mas não é revogação e não elimina dados. `restore` não chama o relógio e não grava nada.
+Notifica com origem `'restore'` se alguma entrada mudar. Duas entradas são iguais quando ambas estão ausentes ou quando têm o mesmo `status`, a mesma `version` e o mesmo `decidedAt`. Entradas iguais mantêm a referência atual, e se nenhuma entrada difere a chamada não tem efeito: `restore(consent.getSnapshot().record)`, em objeto ou em texto JSON, não muda nada enquanto as decisões estão dentro do prazo. Adotar um registro vazio deixa as finalidades `'pending'`, mas não é revogação e não elimina dados. `restore` não grava nada.
+
+`restore` avalia a expiração das decisões do registro adotado, com o relógio configurado: chama o relógio uma vez, somente se o registro tem ao menos uma decisão válida, e descarta as decisões expiradas (veja [`maxAge`](#consentoptions)). Por isso, adotar de novo o próprio registro depois que uma decisão expirou a descarta e notifica a mudança.
 
 ```ts
 // Registro gravado por outra aba, em texto JSON.
 consent.restore(
-  '{"format":1,"decisions":{"analytics":{"status":"granted","version":"2026-10","decidedAt":1793448000000}}}',
+  '{"format":1,"decisions":{"analytics":{"status":"granted","version":"2026-10","decidedAt":1793404800000}}}',
 );
 consent.getSnapshot().status.analytics; // 'granted'
 ```
@@ -191,14 +202,16 @@ export interface ConsentOptions<P extends string = string, C extends string = st
   readonly purposes: { readonly [K in P]: PurposeConfig<C> };
   readonly record?: unknown;
   readonly now?: (() => number) | undefined;
+  readonly maxAge?: number | undefined;
 }
 ```
 
 Opções de `createConsentManager`. Opções desconhecidas causam `TypeError` em tempo de execução e erro de compilação, e chave presente com valor `undefined` equivale a chave ausente.
 
 - `purposes`: finalidades baseadas em consentimento, indexadas pelo id; ao menos uma. O id segue o [formato dos identificadores](#formato-dos-identificadores). A ordem das chaves define a ordem usada em snapshots, registros e notificações.
-- `record`: registro salvo anteriormente, como objeto ou como texto JSON. É tratado como dado não confiável: conteúdo ausente ou inválido é descartado sem erro, e a finalidade afetada fica `'pending'`. A hidratação não notifica e não chama o relógio.
-- `now`: relógio usado em `decidedAt`. Deve devolver milissegundos desde 1970-01-01T00:00:00Z como inteiro não negativo e é chamado sem `this`. Padrão: `Date.now`, lido na criação do gerenciador; trocar `Date.now` depois da criação não afeta a instância. A precisão fica a critério da aplicação: um relógio arredondado (por exemplo, ao dia) reduz a capacidade de `decidedAt` singularizar o dispositivo. O relógio não deve chamar funções do gerenciador; nesse caso, o comportamento não é especificado.
+- `record`: registro salvo anteriormente, como objeto ou como texto JSON. É tratado como dado não confiável: conteúdo ausente ou inválido e decisões expiradas são descartados sem erro, e a finalidade afetada fica `'pending'`. A hidratação não notifica.
+- `now`: relógio usado em `decidedAt` e na avaliação da expiração. Deve devolver milissegundos desde 1970-01-01T00:00:00Z como inteiro seguro não negativo e é chamado sem `this`. Padrão: o início do dia UTC do `Date.now()`, com o `Date.now` lido na criação do gerenciador; trocar `Date.now` depois da criação não afeta a instância. O arredondamento impede que `decidedAt` singularize o dispositivo; passe um relógio mais preciso, como `Date.now`, somente se a aplicação precisar. O relógio não deve chamar funções do gerenciador; nesse caso, o comportamento não é especificado.
+- `maxAge`: prazo de validade das decisões, concessões e recusas, em milissegundos; inteiro seguro positivo. Padrão: 365 dias. Uma decisão vale enquanto `0 <= now() - decidedAt < maxAge`. A expiração é avaliada, com o relógio configurado, na hidratação de `record` e em cada `restore`, e nunca de forma contínua, para manter a estabilidade do snapshot exigida por `useSyncExternalStore`: a decisão que expira com a página aberta continua valendo até a próxima restauração. A decisão expirada, ou datada depois do relógio (cuja idade não se pode estabelecer), é descartada como se não existisse, e a finalidade fica `'pending'`, sem `outdated`. Se o relógio lançar ou devolver valor inválido nessa avaliação, todas as decisões avaliadas são descartadas (falha fechada), sem erro. O valor efetivo fica em [`consent.maxAge`](#maxage).
 
 ```ts
 import { createConsentManager } from 'lgpder';
@@ -208,7 +221,7 @@ const DAY = 24 * 60 * 60 * 1000; // um dia em milissegundos
 export const consent = createConsentManager({
   purposes: { analytics: { version: '2026-10' } },
   record: savedRecord, // texto JSON salvo pela aplicação, ou null
-  now: () => Math.floor(Date.now() / DAY) * DAY, // instante arredondado ao dia
+  maxAge: 180 * DAY, // decisões valem por 180 dias
 });
 ```
 
@@ -339,15 +352,15 @@ Decisão registrada para uma finalidade. Objeto congelado.
 
 - `status`: `'granted'` para concessão; `'denied'` para recusa ou revogação.
 - `version`: versão da finalidade no momento da decisão; ausente se a finalidade não era versionada.
-- `decidedAt`: instante da decisão, em milissegundos desde 1970-01-01T00:00:00Z, segundo o relógio configurado. O núcleo nunca compara instantes: a decisão vigente é a última gravada, qualquer que seja o seu `decidedAt`, e um relógio adiantado, atrasado ou que volta no tempo é aceito.
+- `decidedAt`: instante da decisão, em milissegundos desde 1970-01-01T00:00:00Z, segundo o relógio configurado (por padrão, o início do dia UTC). `decide`, `grantAll` e `denyAll` não comparam instantes: a decisão vigente é a última gravada, qualquer que seja o seu `decidedAt`. O único uso de `decidedAt` pelo núcleo é a expiração, avaliada na hidratação e em `restore` (veja [`maxAge`](#consentoptions)).
 
-No exemplo, a decisão ocorre em 2026-10-31T12:00:00.000Z (`1793448000000`):
+No exemplo, a decisão ocorre em 2026-10-31, e o relógio padrão grava o início desse dia UTC (`1793404800000`):
 
 ```ts
 consent.decide({ analytics: 'granted', ads: 'denied' });
 consent.getSnapshot().record.decisions.analytics;
-// { status: 'granted', version: '2026-10', decidedAt: 1793448000000 }
-consent.getSnapshot().record.decisions.ads; // { status: 'denied', decidedAt: 1793448000000 }
+// { status: 'granted', version: '2026-10', decidedAt: 1793404800000 }
+consent.getSnapshot().record.decisions.ads; // { status: 'denied', decidedAt: 1793404800000 }
 ```
 
 ## `ConsentRecord`
@@ -366,7 +379,7 @@ Registro serializável das decisões. É o que a aplicação persiste, com `JSON
 
 `JSON.stringify(snapshot.record)` é determinístico para o mesmo estado: chaves `format` e `decisions`, nessa ordem; decisões na ordem da configuração; campos de cada decisão na ordem `status`, `version`, `decidedAt`. Cada finalidade ocupa, em geral, de 50 a 90 bytes, conforme o tamanho do id e da versão.
 
-No exemplo, a decisão ocorre em 2026-10-31T12:00:00.000Z:
+No exemplo, a decisão ocorre em 2026-10-31, com o relógio padrão:
 
 ```ts
 consent.decide({ analytics: 'granted', ads: 'denied' });
@@ -377,13 +390,13 @@ JSON.stringify(consent.getSnapshot().record); // texto abaixo, formatado para le
 {
   "format": 1,
   "decisions": {
-    "analytics": { "status": "granted", "version": "2026-10", "decidedAt": 1793448000000 },
-    "ads": { "status": "denied", "decidedAt": 1793448000000 }
+    "analytics": { "status": "granted", "version": "2026-10", "decidedAt": 1793404800000 },
+    "ads": { "status": "denied", "decidedAt": 1793404800000 }
   }
 }
 ```
 
-Todo registro recebido, na hidratação ou em `restore`, é tratado como dado não confiável: é validado de forma estrita, sem lançar erro, e o que for inválido vira ausência de decisão. Nenhuma falha de leitura concede consentimento. Texto é lido com `JSON.parse`, e texto inválido, inclusive `''`, vale registro vazio. Formato aceito:
+Todo registro recebido, na hidratação ou em `restore`, é tratado como dado não confiável: é validado de forma estrita, sem lançar erro, e o que for inválido vira ausência de decisão. Em seguida, as decisões expiradas são descartadas (veja [`maxAge`](#consentoptions)). Nenhuma falha de leitura concede consentimento. Texto é lido com `JSON.parse`, e texto inválido, inclusive `''`, vale registro vazio. Formato aceito:
 
 | Caminho                    | Tipo                      | Obrigatório | Regra                                                              |
 | -------------------------- | ------------------------- | ----------- | ------------------------------------------------------------------ |
@@ -393,7 +406,7 @@ Todo registro recebido, na hidratação ou em `restore`, é tratado como dado n�
 | `decisions.<id>`           | objeto simples            | não         | entrada inválida é descartada sozinha                              |
 | `decisions.<id>.status`    | `"granted"` ou `"denied"` | sim         |                                                                    |
 | `decisions.<id>.version`   | texto não vazio           | não         | ausente: a finalidade não era versionada na decisão                |
-| `decisions.<id>.decidedAt` | inteiro seguro >= 0       | sim         | milissegundos desde a época Unix                                   |
+| `decisions.<id>.decidedAt` | inteiro seguro >= 0       | sim         | milissegundos desde a época Unix; fora do prazo, a entrada expira  |
 
 Somente propriedades próprias são consideradas, e as chaves do registro nunca são iteradas: o núcleo procura apenas os ids configurados. Campos extras são ignorados e não copiados, e qualquer exceção durante a leitura (getter que lança, proxy) resulta em registro vazio. A chave `__proto__` presente em texto JSON nunca é lida, porque não é id válido. Objetos criados em outro realm (por exemplo, em um iframe) não são objetos simples e resultam em registro vazio; nesse caso, passe o texto JSON. Não há limite de tamanho: o custo é proporcional ao número de finalidades configuradas, e a origem do dado é controlada pela aplicação.
 
@@ -510,44 +523,45 @@ export const PURPOSES = {
 - Configuração anotada como `Record<string, PurposeConfig>`, por exemplo vinda do servidor, produz `ConsentManager<string, string>`; a validação em tempo de execução cobre ids e valores.
 - `ConsentManager<P, C>` é atribuível a `ConsentManager` (padrões `string`), para extensões que aceitam qualquer gerenciador.
 - São erros de compilação: propriedade desconhecida em finalidade, opção desconhecida, id desconhecido em `decide`, valor diferente de `'granted'`, `'denied'` ou `undefined` em `decide`, argumentos em `grantAll` e `denyAll` e atribuição a qualquer campo de snapshot.
-- Entradas aceitam `undefined` explícito em `version`, `category`, `individualGrant`, `record`, `now` e nos valores de `decide`, o que é compatível com `exactOptionalPropertyTypes`.
+- Entradas aceitam `undefined` explícito em `version`, `category`, `individualGrant`, `record`, `now`, `maxAge` e nos valores de `decide`, o que é compatível com `exactOptionalPropertyTypes`.
 - `keyof typeof consent.purposes` devolve `P`; não há aliases de tipo para os ids.
 
 ## Erros
 
 Erros de programação lançam instâncias nativas de `TypeError` ou `RangeError`, de forma síncrona e sem efeito parcial: em qualquer erro, nada é alterado e nada é notificado. São erros que se corrigem no código, e não condições a tratar em tempo de execução. Os objetos de erro não são congelados e não têm `cause`. Dados salvos nunca causam erro: `restore` e a hidratação nunca lançam.
 
-As mensagens são fixas, em português do Brasil, com o prefixo `[lgpder] ` e terminadas em ponto, e nunca reproduzem valores lidos de registros. Na tabela, `{json(x)}` é `JSON.stringify(x)` aplicado a um texto (o texto entre aspas duplas, com escapes), e `{tipo(x)}` é `null` para `null`, `array` para arrays e, nos demais casos, o resultado de `typeof x`.
+As mensagens são fixas, em inglês, com o prefixo `[lgpder] ` e terminadas em ponto, e nunca reproduzem valores lidos de registros. Na tabela, `{json(x)}` é `JSON.stringify(x)` aplicado a um texto (o texto entre aspas duplas, com escapes), e `{tipo(x)}` é `null` para `null`, `array` para arrays e, nos demais casos, o resultado de `typeof x`.
 
-| Função                           | Classe       | Quando                                          | Mensagem                                                                                                |
-| -------------------------------- | ------------ | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `createConsentManager`           | `TypeError`  | `options` não é objeto simples                  | `[lgpder] As opções devem ser um objeto simples; recebido: {tipo(options)}.`                            |
-| `createConsentManager`           | `TypeError`  | chave desconhecida em `options`                 | `[lgpder] Opção desconhecida: {json(chave)}.`                                                           |
-| `createConsentManager`           | `TypeError`  | `purposes` não é objeto simples                 | `[lgpder] "purposes" deve ser um objeto simples; recebido: {tipo(purposes)}.`                           |
-| `createConsentManager`           | `TypeError`  | `purposes` sem finalidades                      | `[lgpder] "purposes" deve declarar ao menos uma finalidade.`                                            |
-| `createConsentManager`           | `TypeError`  | id de finalidade inválido                       | `[lgpder] Identificador de finalidade inválido: {json(id)}.`                                            |
-| `createConsentManager`           | `TypeError`  | configuração da finalidade não é objeto simples | `[lgpder] A configuração da finalidade {json(id)} deve ser um objeto simples; recebido: {tipo(valor)}.` |
-| `createConsentManager`           | `TypeError`  | chave desconhecida na finalidade                | `[lgpder] A finalidade {json(id)} tem a propriedade desconhecida {json(chave)}.`                        |
-| `createConsentManager`           | `TypeError`  | `version` inválida                              | `[lgpder] A versão da finalidade {json(id)} deve ser um texto não vazio.`                               |
-| `createConsentManager`           | `TypeError`  | `category` inválida                             | `[lgpder] A categoria da finalidade {json(id)} deve ser um identificador válido.`                       |
-| `createConsentManager`           | `TypeError`  | `individualGrant` inválido                      | `[lgpder] "individualGrant" da finalidade {json(id)} deve ser booleano.`                                |
-| `createConsentManager`           | `TypeError`  | `now` não é função                              | `[lgpder] "now" deve ser uma função; recebido: {tipo(now)}.`                                            |
-| `decide`                         | `TypeError`  | `choices` não é objeto simples                  | `[lgpder] As decisões devem ser um objeto simples; recebido: {tipo(choices)}.`                          |
-| `decide`                         | `RangeError` | finalidade não configurada em `decide`          | `[lgpder] Finalidade desconhecida: {json(chave)}.`                                                      |
-| `decide`                         | `TypeError`  | valor inválido em `decide`                      | `[lgpder] A decisão para {json(id)} deve ser "granted" ou "denied"; recebido: {tipo(valor)}.`           |
-| `decide`, `grantAll` e `denyAll` | `TypeError`  | relógio devolveu valor inválido                 | `[lgpder] "now" deve retornar um inteiro não negativo (milissegundos desde a época Unix).`              |
-| `subscribe`                      | `TypeError`  | `listener` não é função                         | `[lgpder] O ouvinte deve ser uma função; recebido: {tipo(listener)}.`                                   |
+| Função                           | Classe       | Quando                                          | Mensagem                                                                                            |
+| -------------------------------- | ------------ | ----------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `createConsentManager`           | `TypeError`  | `options` não é objeto simples                  | `[lgpder] Options must be a plain object; received: {tipo(options)}.`                               |
+| `createConsentManager`           | `TypeError`  | chave desconhecida em `options`                 | `[lgpder] Unknown option: {json(chave)}.`                                                           |
+| `createConsentManager`           | `TypeError`  | `purposes` não é objeto simples                 | `[lgpder] "purposes" must be a plain object; received: {tipo(purposes)}.`                           |
+| `createConsentManager`           | `TypeError`  | `purposes` sem finalidades                      | `[lgpder] "purposes" must declare at least one purpose.`                                            |
+| `createConsentManager`           | `TypeError`  | id de finalidade inválido                       | `[lgpder] Invalid purpose id: {json(id)}.`                                                          |
+| `createConsentManager`           | `TypeError`  | configuração da finalidade não é objeto simples | `[lgpder] The configuration of purpose {json(id)} must be a plain object; received: {tipo(valor)}.` |
+| `createConsentManager`           | `TypeError`  | chave desconhecida na finalidade                | `[lgpder] Purpose {json(id)} has the unknown property {json(chave)}.`                               |
+| `createConsentManager`           | `TypeError`  | `version` inválida                              | `[lgpder] The version of purpose {json(id)} must be a non-empty string.`                            |
+| `createConsentManager`           | `TypeError`  | `category` inválida                             | `[lgpder] The category of purpose {json(id)} must be a valid id.`                                   |
+| `createConsentManager`           | `TypeError`  | `individualGrant` inválido                      | `[lgpder] "individualGrant" of purpose {json(id)} must be a boolean.`                               |
+| `createConsentManager`           | `TypeError`  | `now` não é função                              | `[lgpder] "now" must be a function; received: {tipo(now)}.`                                         |
+| `createConsentManager`           | `TypeError`  | `maxAge` não é inteiro seguro positivo          | `[lgpder] "maxAge" must be a positive safe integer (milliseconds).`                                 |
+| `decide`                         | `TypeError`  | `choices` não é objeto simples                  | `[lgpder] Choices must be a plain object; received: {tipo(choices)}.`                               |
+| `decide`                         | `RangeError` | finalidade não configurada em `decide`          | `[lgpder] Unknown purpose: {json(chave)}.`                                                          |
+| `decide`                         | `TypeError`  | valor inválido em `decide`                      | `[lgpder] The choice for {json(id)} must be "granted" or "denied"; received: {tipo(valor)}.`        |
+| `decide`, `grantAll` e `denyAll` | `TypeError`  | relógio devolveu valor inválido                 | `[lgpder] "now" must return a non-negative safe integer (milliseconds since the Unix epoch).`       |
+| `subscribe`                      | `TypeError`  | `listener` não é função                         | `[lgpder] The listener must be a function; received: {tipo(listener)}.`                             |
 
 Exemplos:
 
-| Chamada                                                         | Mensagem                                                                           |
-| --------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `createConsentManager({ purposes: [] })`                        | `[lgpder] "purposes" deve ser um objeto simples; recebido: array.`                 |
-| `createConsentManager({ purposes: { '*': {} } })`               | `[lgpder] Identificador de finalidade inválido: "*".`                              |
-| `createConsentManager({ purposes: { ads: { verison: '1' } } })` | `[lgpder] A finalidade "ads" tem a propriedade desconhecida "verison".`            |
-| `consent.decide({ analytic: 'granted' })`                       | `[lgpder] Finalidade desconhecida: "analytic".` (`RangeError`)                     |
-| `consent.decide({ ads: true })`                                 | `[lgpder] A decisão para "ads" deve ser "granted" ou "denied"; recebido: boolean.` |
-| `consent.subscribe('x')`                                        | `[lgpder] O ouvinte deve ser uma função; recebido: string.`                        |
+| Chamada                                                         | Mensagem                                                                          |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `createConsentManager({ purposes: [] })`                        | `[lgpder] "purposes" must be a plain object; received: array.`                    |
+| `createConsentManager({ purposes: { '*': {} } })`               | `[lgpder] Invalid purpose id: "*".`                                               |
+| `createConsentManager({ purposes: { ads: { verison: '1' } } })` | `[lgpder] Purpose "ads" has the unknown property "verison".`                      |
+| `consent.decide({ analytic: 'granted' })`                       | `[lgpder] Unknown purpose: "analytic".` (`RangeError`)                            |
+| `consent.decide({ ads: true })`                                 | `[lgpder] The choice for "ads" must be "granted" or "denied"; received: boolean.` |
+| `consent.subscribe('x')`                                        | `[lgpder] The listener must be a function; received: string.`                     |
 
 Objeto simples é um valor com `typeof` igual a `'object'`, diferente de `null`, cujo protótipo é `Object.prototype` ou `null`. Arrays, instâncias de `Map` e objetos criados em outro realm não são objetos simples.
 
@@ -581,9 +595,9 @@ Há notificação se e somente se o registro muda: uma chamada efetiva de `decid
 
 Uma operação efetiva segue esta ordem:
 
-1. valida a entrada;
+1. valida a entrada (em `restore`, lê o registro e, se ele tem decisões válidas, lê o relógio para descartar as expiradas);
 2. calcula as mudanças;
-3. lê o relógio (somente `decide`, `grantAll` e `denyAll`);
+3. lê o relógio, para o `decidedAt` (somente `decide`, `grantAll` e `denyAll`);
 4. confirma a alteração: a partir daqui, `getSnapshot()` devolve o novo estado;
 5. notifica os ouvintes de forma síncrona, na ordem de inscrição.
 

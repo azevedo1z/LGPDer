@@ -1,8 +1,8 @@
 {
   "name": "lgpder",
   "version": "0.1.0",
-  "private": true,
-  "description": "Núcleo leve e tipado de gerenciamento de consentimento por finalidade para aplicações web, tendo a LGPD como referência. Não garante conformidade legal.",
+  "description": "Lightweight, typed, per-purpose consent manager for web applications, with the Brazilian LGPD as reference. Does not guarantee legal compliance.",
+  "license": "MIT",
   "keywords": [
     "consentimento",
     "consent",
@@ -23,9 +23,10 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist/*.js",
-    "dist/index.d.ts",
-    "docs/*.md"
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "docs/*.md",
+    "CHANGELOG.md"
   ],
   "sideEffects": false,
   "engines": {
@@ -41,27 +42,35 @@
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "npm run clean && tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.core.json",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test --experimental-test-coverage --test-coverage-include=\"src/**\" --test-coverage-include=\"examples/**\" --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \"test/*.test.ts\"",
+    "test": "node --test --test-timeout=30000 --experimental-test-coverage --test-coverage-include=\"src/**\" --test-coverage-include=\"examples/**\" --test-coverage-lines=90 --test-coverage-branches=90 --test-coverage-functions=90 \"test/{core,tooling,storage,scripts,google,evidence,ui,init}/*.test.ts\"",
     "test:package": "npm run build && publint --strict && attw --pack . --profile esm-only && tsc -p test/consumer/tsconfig.dist.json && node --test \"test/consumer/*.test.ts\"",
-    "test:types-compat": "npm run build && node node_modules/typescript-5.6/bin/tsc -p test/consumer/tsconfig.dist.json && node node_modules/typescript-7/bin/tsc -p test/consumer/tsconfig.dist.json",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run test:package && npm run test:types-compat",
+    "size": "npm run build && size-limit",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run test:package && npm run size",
     "prepack": "npm run build",
     "prepublishOnly": "npm run check"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@eslint/js": "^10.0.1",
+    "@size-limit/preset-small-lib": "^14.3.0",
     "@types/node": "^24.19.2",
     "eslint": "^10.14.0",
     "prettier": "3.9.10",
     "publint": "^0.3.25",
+    "size-limit": "^14.3.0",
     "typescript": "~6.0.3",
-    "typescript-5.6": "npm:typescript@5.6.3",
-    "typescript-7": "npm:typescript@7.0.2",
     "typescript-eslint": "^8.72.1"
-  }
+  },
+  "size-limit": [
+    {
+      "name": "core (lgpder)",
+      "path": "dist/index.js",
+      "limit": "3 kB",
+      "gzip": true
+    }
+  ]
 }

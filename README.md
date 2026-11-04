@@ -44,7 +44,7 @@ Ficam fora do núcleo:
 - backend, banco de dados, autenticação e gestão de solicitações de titulares;
 - integrações automáticas com terceiros, carregamento automático de scripts e analytics, tracking ou telemetria;
 - leitura ou gravação de armazenamento (Web Storage, cookies, IndexedDB) dentro do pacote;
-- expiração automática de decisões, histórico ou trilha de auditoria de decisões e qualquer operação de "esquecer decisões" apresentada como recurso.
+- histórico ou trilha de auditoria de decisões e qualquer operação de "esquecer decisões" apresentada como recurso.
 
 Os itens que podem ser construídos como extensão estão em [Extensões futuras](#extensões-futuras).
 
@@ -57,8 +57,8 @@ npm install lgpder
 - Pacote somente ESM, sem dependências de runtime.
 - Node.js 22.12 ou superior, quando usado em Node. A partir dessa versão, módulos ESM também podem ser carregados por `require`, sem flag.
 - Navegadores com suporte a ES2022 (por exemplo, `Object.hasOwn`: Chrome e Edge 93+, Firefox 92+, Safari 15.4+).
-- Projetos ESM em TypeScript: TypeScript 5.6 ou superior, com `moduleResolution` igual a `node16`, `nodenext` ou `bundler`.
-- Projetos CommonJS em TypeScript, em que o `import` é compilado para `require`: TypeScript 5.8 ou superior com `module` igual a `nodenext`, ou `node20` a partir do 5.9. Com `node16`, `node18` ou versões anteriores do TypeScript, carregue o pacote com `import()` dinâmico.
+- Projetos ESM em TypeScript, com `moduleResolution` igual a `node16`, `nodenext` ou `bundler`. Até a 1.0, os tipos publicados são verificados somente com a versão do TypeScript usada no repositório (6.0).
+- Projetos CommonJS em TypeScript, em que o `import` é compilado para `require`: é preciso uma versão do TypeScript que aceite `require` de módulos ESM, com `module` igual a `nodenext` ou `node20`; essa combinação não é verificada no repositório. Caso contrário, carregue o pacote com `import()` dinâmico.
 
 ## Início rápido
 
@@ -120,17 +120,18 @@ As regras completas estão na referência da API: [situação efetiva](docs/api.
 
 A única exportação de runtime é `createConsentManager`; as demais são tipos (`ConsentManager`, `ConsentOptions`, `PurposeConfig`, `ConsentStatus`, `DecidedStatus`, `ConsentChoices`, `ConsentDecision`, `ConsentRecord`, `ConsentSnapshot`, `ChangeSource`, `ConsentChange` e `ConsentListener`). A [referência da API](docs/api.md) traz assinaturas, parâmetros, retorno, erros com as mensagens exatas, exemplos, tipagem, notificações, SSR e React.
 
-| Membro                                                              | O que faz                                                                                           |
-| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| [`createConsentManager(options)`](docs/api.md#createconsentmanager) | Cria o gerenciador a partir das finalidades e, opcionalmente, de um registro salvo e de um relógio. |
-| [`purposes`](docs/api.md#purposes)                                  | Cópia congelada da configuração das finalidades.                                                    |
-| [`getSnapshot()`](docs/api.md#getsnapshot)                          | Devolve o estado atual: situação, `outdated` e registro.                                            |
-| [`getServerSnapshot()`](docs/api.md#getserversnapshot)              | Devolve um estado sem decisões, para a renderização no servidor e a hidratação.                     |
-| [`decide(choices)`](docs/api.md#decidechoices)                      | Registra, altera ou revoga decisões em uma única operação atômica.                                  |
-| [`grantAll()`](docs/api.md#grantall)                                | Concede as finalidades sem `individualGrant: true`.                                                 |
-| [`denyAll()`](docs/api.md#denyall)                                  | Recusa ou revoga todas as finalidades.                                                              |
-| [`restore(record)`](docs/api.md#restorerecord)                      | Substitui todas as decisões pelo conteúdo válido de um registro externo.                            |
-| [`subscribe(listener)`](docs/api.md#subscribelistener)              | Inscreve um ouvinte, chamado de forma síncrona após cada alteração do registro.                     |
+| Membro                                                              | O que faz                                                                                                                              |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| [`createConsentManager(options)`](docs/api.md#createconsentmanager) | Cria o gerenciador a partir das finalidades e, opcionalmente, de um registro salvo, de um relógio e do prazo de validade das decisões. |
+| [`purposes`](docs/api.md#purposes)                                  | Cópia congelada da configuração das finalidades.                                                                                       |
+| [`maxAge`](docs/api.md#maxage)                                      | Prazo de validade efetivo das decisões, em milissegundos.                                                                              |
+| [`getSnapshot()`](docs/api.md#getsnapshot)                          | Devolve o estado atual: situação, `outdated` e registro.                                                                               |
+| [`getServerSnapshot()`](docs/api.md#getserversnapshot)              | Devolve um estado sem decisões, para a renderização no servidor e a hidratação.                                                        |
+| [`decide(choices)`](docs/api.md#decidechoices)                      | Registra, altera ou revoga decisões em uma única operação atômica.                                                                     |
+| [`grantAll()`](docs/api.md#grantall)                                | Concede as finalidades sem `individualGrant: true`.                                                                                    |
+| [`denyAll()`](docs/api.md#denyall)                                  | Recusa ou revoga todas as finalidades.                                                                                                 |
+| [`restore(record)`](docs/api.md#restorerecord)                      | Substitui todas as decisões pelo conteúdo válido de um registro externo.                                                               |
+| [`subscribe(listener)`](docs/api.md#subscribelistener)              | Inscreve um ouvinte, chamado de forma síncrona após cada alteração do registro.                                                        |
 
 ## Persistência
 
@@ -140,11 +141,12 @@ O núcleo não lê nem grava armazenamento: a aplicação persiste `snapshot.rec
 
 - O registro guarda somente, por finalidade, a situação decidida, a versão e o instante da decisão, além do campo `format`. Nenhum identificador do titular, IP, user agent, idioma ou texto exibido.
 - O estado fica em memória, na instância do gerenciador, durante a vida dela. A persistência é escolha da aplicação, e o prazo no armazenamento segue a política dela e os limites do navegador (veja [Ciclo de vida do registro](docs/persistencia.md#ciclo-de-vida-do-registro)).
-- O núcleo usa somente recursos do ECMAScript 2022, `Date.now` (relógio padrão) e `queueMicrotask` (para relançar erros de ouvintes). Não acessa `window`, `document`, `navigator`, armazenamento, cookies, rede, timers nem `process`, não gera identificadores e não registra logs.
+- O núcleo usa somente recursos do ECMAScript 2022, `Date.now` (base do relógio padrão) e `queueMicrotask` (para relançar erros de ouvintes). Não acessa `window`, `document`, `navigator`, armazenamento, cookies, rede, timers nem `process`, não gera identificadores e não registra logs.
 - Sem `eval`, `new Function` ou `import()` dinâmico, sem dependências de runtime e sem efeito colateral na importação.
 - Dados salvos são validados de forma estrita e nunca causam erro; o que for inválido vira ausência de decisão. Nenhum caminho de erro concede consentimento (falha fechada).
 - Todo objeto público é congelado, e nenhum objeto recebido (configuração, escolhas, registro) é retido por referência.
-- O instante de cada decisão, na precisão de milissegundos do relógio padrão, pode singularizar o navegador e funcionar como pseudoidentificador. Por isso a ligação com cookie cria o gerenciador com relógio arredondado ao dia; a opção [`now`](docs/api.md#consentoptions) permite escolher a precisão em qualquer caso.
+- O instante de cada decisão, na precisão de milissegundos, poderia singularizar o navegador e funcionar como pseudoidentificador. Por isso o relógio padrão devolve o início do dia UTC; a opção [`now`](docs/api.md#consentoptions) permite uma precisão maior, quando a aplicação precisar.
+- As decisões, concessões e recusas, expiram depois de [`maxAge`](docs/api.md#consentoptions) (padrão: 365 dias). A expiração é avaliada na hidratação e em `restore()`, e a decisão expirada volta a `'pending'`.
 - O armazenamento do navegador pode ser lido ou alterado por qualquer script da mesma origem: proteja a aplicação contra XSS e avalie os scripts de terceiros que ela carrega.
 - Com cookie, o registro é enviado ao servidor em toda requisição ao domínio, e outros hosts do mesmo domínio registrável podem gravar cookies visíveis à página. Os cuidados estão na [ligação com cookie](docs/persistencia.md#ligação-com-cookie).
 
@@ -171,7 +173,7 @@ Nenhuma das extensões abaixo existe hoje. O núcleo permite cada uma sem reestr
 - Evidências e auditoria no backend: ouvinte que filtra `source === 'decision'` e envia as decisões de `changed`, como em [Prova do consentimento e evidências](docs/persistencia.md#prova-do-consentimento-e-evidências).
 - Integrações com terceiros (por exemplo, modos de consentimento de plataformas de anúncios ou analytics): adaptadores que traduzem a situação em sinais externos, aplicando `getSnapshot()` ao se inscrever e depois cada `snapshot.status` notificado. O núcleo não conhece terceiros.
 - Carregamento condicional de scripts: ouvinte que aplica a situação de `getSnapshot()` ao se inscrever e, a cada notificação, compara a situação notificada com a já aplicada, como no [início rápido](#início-rápido).
-- Expiração ou renovação e versão global como opções nativas, em versão minor. Hoje, a renovação é política da aplicação a partir de `decidedAt` (veja [Expiração](docs/lgpd.md#expiração)), e uma constante compartilhada entre finalidades faz o papel de versão global (veja [Versão e `outdated`](docs/api.md#versão-e-outdated)).
+- Versão global como opção nativa, em versão minor. Hoje, uma constante compartilhada entre finalidades faz esse papel (veja [Versão e `outdated`](docs/api.md#versão-e-outdated)). A expiração já é nativa, pela opção `maxAge` (veja [Expiração](docs/lgpd.md#expiração)).
 - Marcações adicionais por finalidade (por exemplo, dado sensível): nova chave de configuração em versão minor do núcleo. Extensões não injetam chaves: como chaves desconhecidas são recusadas, elas envolvem o gerenciador.
 - Novo formato do registro, em versão major (veja [Ciclo de vida do registro](docs/persistencia.md#ciclo-de-vida-do-registro)).
 
@@ -187,4 +189,4 @@ O pacote segue o Versionamento Semântico (SemVer) a partir da versão 0.1.0:
 
 ## Licença
 
-A licença do LGPDer ainda não foi definida e será escolhida antes da publicação do pacote.
+MIT. Veja o arquivo [LICENSE](LICENSE).

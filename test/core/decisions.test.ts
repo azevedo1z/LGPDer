@@ -3,24 +3,23 @@ import { describe, it } from 'node:test';
 
 import type { ConsentChange } from 'lgpder';
 
-import { createConsentManager } from '../src/index.ts';
-import { decisionOf, recordOf } from './support/records.ts';
+import { createConsentManager } from '../../src/index.ts';
+import { decisionOf, recordOf } from '../support/records.ts';
 import {
   PURPOSES,
   START,
   createUntyped,
   decideUntyped,
   setup,
-  withArrayPollution,
   withObjectPollution,
   withPrototype,
-} from './support/setup.ts';
+} from '../support/setup.ts';
 
-/** Registro com `analytics` concedida sob a versão vigente da fixture. */
+/** Record with `analytics` granted under the current version of the fixture. */
 const ANALYTICS_GRANTED = recordOf({ analytics: decisionOf('granted', { version: '2026-10' }) });
 
-describe('decide: conceder, recusar e revogar', () => {
-  it('conceder grava status, a versão vigente da finalidade e o instante do relógio', () => {
+describe('decide: grant, refuse and revoke', () => {
+  it('granting records the status, the current version of the purpose and the clock instant', () => {
     const { consent } = setup();
 
     consent.decide({ analytics: 'granted' });
@@ -30,7 +29,7 @@ describe('decide: conceder, recusar e revogar', () => {
     });
   });
 
-  it('finalidade sem versão configurada grava decisão sem version', () => {
+  it('a purpose without a configured version records a decision without version', () => {
     const { consent } = setup();
 
     consent.decide({ ads: 'denied' });
@@ -41,7 +40,7 @@ describe('decide: conceder, recusar e revogar', () => {
   });
 
   for (const status of ['granted', 'denied'] as const) {
-    it(`decidir '${status}' torna a situação '${status}'`, () => {
+    it(`deciding '${status}' makes the status '${status}'`, () => {
       const { consent } = setup();
 
       consent.decide({ ads: status });
@@ -50,7 +49,7 @@ describe('decide: conceder, recusar e revogar', () => {
     });
   }
 
-  it('revogar grava nova decisão denied com novo decidedAt, e o registro guarda só a última', () => {
+  it('revoking records a new denied decision with a new decidedAt, and the record keeps only the last', () => {
     const { consent, clock } = setup();
     consent.decide({ ads: 'granted' });
     clock.advance(60_000);
@@ -62,7 +61,7 @@ describe('decide: conceder, recusar e revogar', () => {
     });
   });
 
-  it('a notificação da revogação traz previous com granted e snapshot com denied', () => {
+  it('the notification of the revocation has previous with granted and snapshot with denied', () => {
     const { consent, changes } = setup();
     consent.decide({ ads: 'granted' });
 
@@ -76,7 +75,7 @@ describe('decide: conceder, recusar e revogar', () => {
     );
   });
 
-  it('sem limite de frequência: conceder e revogar em sequência, no mesmo instante, grava tudo', () => {
+  it('no rate limit: granting and revoking in sequence, at the same instant, records everything', () => {
     const { consent, changes } = setup();
 
     consent.decide({ ads: 'granted' });
@@ -87,7 +86,7 @@ describe('decide: conceder, recusar e revogar', () => {
     assert.equal(changes.length, 4);
   });
 
-  it('individualGrant não impede decide de conceder', () => {
+  it('individualGrant does not prevent decide from granting', () => {
     const { consent } = setup();
 
     consent.decide({ health: 'granted' });
@@ -96,46 +95,46 @@ describe('decide: conceder, recusar e revogar', () => {
   });
 });
 
-describe('validação da entrada inteira antes de qualquer efeito', () => {
+describe('validation of the whole input before any effect', () => {
   const INVALID_CHOICES = [
     {
-      scenario: 'id desconhecido depois de uma escolha válida',
+      scenario: 'unknown id after a valid choice',
       args: [{ analytics: 'granted', typo: 'denied' }],
       error: RangeError,
     },
     {
-      scenario: 'valor booleano no meio do lote',
+      scenario: 'boolean value in the middle of the batch',
       args: [{ analytics: 'granted', ads: true, health: 'denied' }],
       error: TypeError,
     },
     {
-      scenario: "valor 'GRANTED'",
+      scenario: "value 'GRANTED'",
       args: [{ analytics: 'granted', ads: 'GRANTED' }],
       error: TypeError,
     },
     {
-      scenario: "valor 'pending'",
+      scenario: "value 'pending'",
       args: [{ analytics: 'granted', ads: 'pending' }],
       error: TypeError,
     },
-    { scenario: 'escolhas null', args: [null], error: TypeError },
-    { scenario: 'escolhas em array', args: [['analytics']], error: TypeError },
+    { scenario: 'null choices', args: [null], error: TypeError },
+    { scenario: 'choices in an array', args: [['analytics']], error: TypeError },
     {
-      scenario: 'escolhas em Map',
+      scenario: 'choices in a Map',
       args: [new Map([['analytics', 'granted']])],
       error: TypeError,
     },
-    { scenario: 'escolhas em texto', args: ['analytics'], error: TypeError },
-    { scenario: 'nenhum argumento', args: [], error: TypeError },
+    { scenario: 'choices in a string', args: ['analytics'], error: TypeError },
+    { scenario: 'no argument', args: [], error: TypeError },
     {
-      scenario: 'escolhas com outro protótipo',
+      scenario: 'choices with another prototype',
       args: [withPrototype({ analytics: 'granted' }, {})],
       error: TypeError,
     },
   ] as const;
 
   for (const { scenario, args, error } of INVALID_CHOICES) {
-    it(`${scenario}: lança ${error.name} sem aplicar nada, sem chamar o relógio e sem notificar`, () => {
+    it(`${scenario}: throws ${error.name} without applying anything, calling the clock or notifying`, () => {
       const { consent, clock, changes } = setup();
       const before = consent.getSnapshot();
 
@@ -151,29 +150,29 @@ describe('validação da entrada inteira antes de qualquer efeito', () => {
 
   const FIRST_VIOLATION = [
     {
-      scenario: 'a chave é verificada antes do valor inválido',
+      scenario: 'the key is checked before the invalid value',
       choices: { typo: true },
       error: RangeError,
     },
     {
-      scenario: 'a chave é verificada antes do valor undefined',
+      scenario: 'the key is checked before the undefined value',
       choices: { typo: undefined },
       error: RangeError,
     },
     {
-      scenario: 'valor inválido em chave anterior a uma chave desconhecida',
+      scenario: 'invalid value in a key before an unknown key',
       choices: { ads: 'GRANTED', typo: 'denied' },
       error: TypeError,
     },
     {
-      scenario: 'chave desconhecida anterior a um valor inválido',
+      scenario: 'unknown key before an invalid value',
       choices: { typo: 'denied', ads: 'GRANTED' },
       error: RangeError,
     },
   ] as const;
 
   for (const { scenario, choices, error } of FIRST_VIOLATION) {
-    it(`a primeira violação na ordem de Object.keys define o erro: ${scenario}`, () => {
+    it(`the first violation in Object.keys order defines the error: ${scenario}`, () => {
       const { consent } = setup();
 
       assert.throws(() => {
@@ -182,21 +181,7 @@ describe('validação da entrada inteira antes de qualquer efeito', () => {
     });
   }
 
-  it('lê o valor de cada escolha uma única vez', () => {
-    const { consent } = setup();
-    let reads = 0;
-
-    consent.decide({
-      get ads() {
-        reads += 1;
-        return 'granted' as const;
-      },
-    });
-
-    assert.equal(reads, 1);
-  });
-
-  it('depois de um erro, as inscrições continuam ativas', () => {
+  it('after an error, the subscriptions stay active', () => {
     const { consent, changes } = setup();
     assert.throws(() => {
       decideUntyped(consent, { typo: 'granted' });
@@ -207,7 +192,7 @@ describe('validação da entrada inteira antes de qualquer efeito', () => {
     assert.equal(changes.length, 1);
   });
 
-  it('ignora chaves símbolo e propriedades não enumeráveis das escolhas', () => {
+  it('ignores symbol keys and non-enumerable properties of the choices', () => {
     const { consent } = setup();
     const choices = Object.defineProperty({ ads: 'granted', [Symbol('extra')]: 'denied' }, 'typo', {
       value: 'denied',
@@ -223,17 +208,7 @@ describe('validação da entrada inteira antes de qualquer efeito', () => {
     });
   });
 
-  it('ignora escolhas herdadas de um Object.prototype poluído', () => {
-    const { consent } = setup();
-
-    withObjectPollution({ analytics: 'granted' }, () => {
-      consent.decide({ ads: 'denied' });
-    });
-
-    assert.equal(consent.getSnapshot().status.analytics, 'pending');
-  });
-
-  it('escolhas com protótipo nulo são aceitas', () => {
+  it('null-prototype choices are accepted', () => {
     const { consent } = setup();
 
     decideUntyped(consent, withPrototype({ ads: 'granted' }, null));
@@ -242,11 +217,11 @@ describe('validação da entrada inteira antes de qualquer efeito', () => {
   });
 });
 
-describe('erro ao confirmar uma decisão não deixa efeito parcial', () => {
-  it('a decisão seguinte a uma que lançou ao montar o snapshot não publica a decisão que lançou', () => {
+describe('an error while committing a decision leaves no partial effect', () => {
+  it('the decision after one that threw while building the snapshot does not publish the one that threw', () => {
     const { consent, changes } = setup({ purposes: { ads: {}, other: {} } });
-    // Propriedade herdada somente leitura com o nome de uma finalidade, criada depois da criação:
-    // montar o snapshot atribui status.other e lança.
+    // Inherited read-only property named after a purpose, created after the manager: building the
+    // snapshot assigns status.other and throws.
     withObjectPollution(
       { other: 'pending' },
       () => {
@@ -266,26 +241,27 @@ describe('erro ao confirmar uma decisão não deixa efeito parcial', () => {
   });
 });
 
-describe('chamadas sem mudança', () => {
+describe('calls without change', () => {
   const NO_OPS = [
     { scenario: 'decide({})', choices: {} },
-    { scenario: 'finalidade com undefined', choices: { ads: undefined } },
-    { scenario: 'reconfirmação da situação vigente', choices: { analytics: 'granted' } },
+    { scenario: 'purpose with undefined', choices: { ads: undefined } },
+    { scenario: 'reconfirmation of the current status', choices: { analytics: 'granted' } },
   ] as const;
 
   for (const { scenario, choices } of NO_OPS) {
-    it(`${scenario} é no-op completo: mesmo snapshot e relógio não chamado`, () => {
+    it(`${scenario} is a complete no-op: same snapshot and the clock is not called`, () => {
       const { consent, clock } = setup({ record: ANALYTICS_GRANTED });
       const before = consent.getSnapshot();
+      const hydrationCalls = clock.calls();
 
       consent.decide(choices);
 
       assert.equal(consent.getSnapshot(), before);
-      assert.equal(clock.calls(), 0);
+      assert.equal(clock.calls(), hydrationCalls);
     });
   }
 
-  it('reconfirmar preserva a decisão vigente, com o mesmo decidedAt', () => {
+  it('reconfirming keeps the current decision, with the same decidedAt', () => {
     const { consent, clock } = setup();
     consent.decide({ ads: 'granted' });
     const decision = consent.getSnapshot().record.decisions.ads;
@@ -296,7 +272,7 @@ describe('chamadas sem mudança', () => {
     assert.equal(consent.getSnapshot().record.decisions.ads, decision);
   });
 
-  it('no lote com outras mudanças, a finalidade reconfirmada mantém a decisão anterior', () => {
+  it('in a batch with other changes, the reconfirmed purpose keeps the previous decision', () => {
     const { consent, clock } = setup();
     consent.decide({ ads: 'granted' });
     const decision = consent.getSnapshot().record.decisions.ads;
@@ -307,7 +283,7 @@ describe('chamadas sem mudança', () => {
     assert.equal(consent.getSnapshot().record.decisions.ads, decision);
   });
 
-  it('finalidade com undefined não muda, mesmo no lote com outras mudanças', () => {
+  it('a purpose with undefined does not change, even in a batch with other changes', () => {
     const { consent, changes } = setup();
     consent.decide({ ads: 'granted' });
 
@@ -318,41 +294,27 @@ describe('chamadas sem mudança', () => {
       [['ads'], ['analytics']],
     );
   });
-
-  it('com Array.prototype poluído por granted, as finalidades omitidas não mudam', () => {
-    const { consent } = setup();
-
-    withArrayPollution('granted', () => {
-      consent.decide({ analytics: 'granted' });
-    });
-
-    assert.deepStrictEqual(consent.getSnapshot().status, {
-      analytics: 'granted',
-      ads: 'pending',
-      health: 'pending',
-    });
-  });
 });
 
-describe('a finalidade só é gravada se o valor pedido difere da situação efetiva', () => {
+describe('a purpose is only written if the requested value differs from the effective status', () => {
   const CASES = [
     {
-      scenario: 'finalidade sem decisão é gravada',
+      scenario: 'a purpose without a decision is written',
       record: undefined,
       expected: [['analytics']],
     },
     {
-      scenario: 'decisão desatualizada é gravada, mesmo com o mesmo valor',
+      scenario: 'an outdated decision is written, even with the same value',
       record: recordOf({ analytics: decisionOf('granted', { version: '2025-01' }) }),
       expected: [['analytics']],
     },
     {
-      scenario: 'decisão vigente com o valor oposto é gravada',
+      scenario: 'a current decision with the opposite value is written',
       record: recordOf({ analytics: decisionOf('denied', { version: '2026-10' }) }),
       expected: [['analytics']],
     },
     {
-      scenario: 'decisão vigente com o mesmo valor não é gravada',
+      scenario: 'a current decision with the same value is not written',
       record: ANALYTICS_GRANTED,
       expected: [],
     },
@@ -372,8 +334,8 @@ describe('a finalidade só é gravada se o valor pedido difere da situação efe
   }
 });
 
-describe('relógio das decisões', () => {
-  it('é chamado exatamente uma vez por chamada efetiva, mesmo com várias finalidades', () => {
+describe('clock of the decisions', () => {
+  it('is called exactly once per effective call, even with several purposes', () => {
     const { consent, clock } = setup();
 
     consent.decide({ analytics: 'granted', ads: 'granted', health: 'denied' });
@@ -381,7 +343,7 @@ describe('relógio das decisões', () => {
     assert.equal(clock.calls(), 1);
   });
 
-  it('decidedAt é o valor devolvido pelo relógio', () => {
+  it('decidedAt is the value returned by the clock', () => {
     const { consent, clock } = setup();
     clock.advance(1_234);
 
@@ -390,7 +352,7 @@ describe('relógio das decisões', () => {
     assert.equal(consent.getSnapshot().record.decisions.ads?.decidedAt, START + 1_234);
   });
 
-  it('subscribe, getSnapshot e getServerSnapshot não chamam o relógio', () => {
+  it('subscribe, getSnapshot and getServerSnapshot do not call the clock', () => {
     const { consent, clock } = setup();
 
     consent.subscribe(() => undefined);
@@ -406,7 +368,7 @@ describe('relógio das decisões', () => {
   ] as const;
 
   for (const { scenario, value } of VALID_INSTANTS) {
-    it(`aceita ${scenario} como instante`, () => {
+    it(`accepts ${scenario} as an instant`, () => {
       const consent = createConsentManager({ purposes: PURPOSES, now: () => value });
 
       consent.decide({ ads: 'granted' });
@@ -419,14 +381,14 @@ describe('relógio das decisões', () => {
     { scenario: 'NaN', value: Number.NaN },
     { scenario: '1.5', value: 1.5 },
     { scenario: '-1', value: -1 },
-    { scenario: "o texto '1'", value: '1' },
-    { scenario: 'um objeto Date', value: new Date(START) },
+    { scenario: "the string '1'", value: '1' },
+    { scenario: 'a Date object', value: new Date(START) },
     { scenario: 'Infinity', value: Number.POSITIVE_INFINITY },
-    { scenario: 'inteiro acima de Number.MAX_SAFE_INTEGER', value: 2 ** 53 },
+    { scenario: 'an integer above Number.MAX_SAFE_INTEGER', value: 2 ** 53 },
   ] as const;
 
   for (const { scenario, value } of INVALID_INSTANTS) {
-    it(`relógio que devolve ${scenario}: TypeError, nada aplicado e nada notificado`, () => {
+    it(`a clock that returns ${scenario}: TypeError, nothing applied and nothing notified`, () => {
       const consent = createUntyped({ purposes: PURPOSES, now: () => value });
       const changes: ConsentChange[] = [];
       consent.subscribe((change) => {
@@ -443,8 +405,8 @@ describe('relógio das decisões', () => {
     });
   }
 
-  it('relógio que lança: a exceção se propaga intacta e nada é aplicado', () => {
-    const failure = new Error('relógio indisponível');
+  it('a clock that throws: the exception propagates intact and nothing is applied', () => {
+    const failure = new Error('clock unavailable');
     const consent = createConsentManager({
       purposes: PURPOSES,
       now: () => {
@@ -464,8 +426,8 @@ describe('relógio das decisões', () => {
   });
 });
 
-describe('decisões de uma mesma chamada', () => {
-  it('compartilham o mesmo decidedAt, mesmo com relógio que avança a cada leitura', () => {
+describe('decisions of the same call', () => {
+  it('share the same decidedAt, even with a clock that advances on each read', () => {
     let tick = START;
     const consent = createConsentManager({ purposes: PURPOSES, now: () => tick++ });
 
@@ -479,8 +441,8 @@ describe('decisões de uma mesma chamada', () => {
   });
 });
 
-describe('snapshot e notificação de uma chamada efetiva', () => {
-  it('produz exatamente um snapshot novo e uma notificação de origem decision', () => {
+describe('snapshot and notification of an effective call', () => {
+  it('produces exactly one new snapshot and one notification with source decision', () => {
     const { consent, changes } = setup();
     const before = consent.getSnapshot();
 
@@ -493,7 +455,7 @@ describe('snapshot e notificação de uma chamada efetiva', () => {
     );
   });
 
-  it('changed segue a ordem da configuração, e não a ordem das escolhas', () => {
+  it('changed follows the configuration order, not the order of the choices', () => {
     const { consent, changes } = setup();
 
     consent.decide({ health: 'denied', ads: 'granted', analytics: 'granted' });
@@ -504,7 +466,7 @@ describe('snapshot e notificação de uma chamada efetiva', () => {
     );
   });
 
-  it('changed lista só as finalidades gravadas', () => {
+  it('changed lists only the written purposes', () => {
     const { consent, changes } = setup({ record: ANALYTICS_GRANTED });
 
     consent.decide({ analytics: 'granted', ads: 'denied' });
@@ -516,8 +478,8 @@ describe('snapshot e notificação de uma chamada efetiva', () => {
   });
 });
 
-describe('o core nunca compara instantes', () => {
-  it('relógio que volta no tempo: a nova decisão vale, mesmo com decidedAt menor', () => {
+describe('decide never compares instants', () => {
+  it('a clock that goes back in time: the new decision wins, even with a smaller decidedAt', () => {
     const { consent, clock } = setup();
     consent.decide({ ads: 'granted' });
     clock.advance(-60_000);

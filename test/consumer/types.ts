@@ -1,40 +1,44 @@
 /**
- * Testes de tipos compilados contra o `dist/index.d.ts` publicado, com TypeScript 5.6.3, 6.0.3 e
- * 7.0.2. Repetem um subconjunto representativo de `test/types.check.ts`.
+ * Type tests compiled against the published `dist/index.d.ts`, with the TypeScript version of the
+ * repository. They repeat a representative subset of `test/types.check.ts`.
  */
 import { createConsentManager, type ConsentManager, type ConsentSnapshot } from 'lgpder';
 
-/* eslint-disable @typescript-eslint/no-unnecessary-type-parameters -- o T é o próprio mecanismo da comparação exata de tipos */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-parameters -- T is the very mechanism of the exact type comparison */
 type Equal<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 /* eslint-enable @typescript-eslint/no-unnecessary-type-parameters */
 type Expect<T extends true> = T;
 type Assignable<From, To> = [From] extends [To] ? true : false;
 
-/** Cópia local da assinatura de `useSyncExternalStore` do React. */
+/** Local copy of the signature of the React `useSyncExternalStore`. */
 declare function useSyncExternalStore<Snapshot>(
   subscribe: (onStoreChange: () => void) => () => void,
   getSnapshot: () => Snapshot,
   getServerSnapshot?: () => Snapshot,
 ): Snapshot;
 
-// P e C inferidos do objeto escrito na chamada.
+// P and C inferred from the object written in the call.
 const consent = createConsentManager({
   purposes: {
     analytics: { version: '2026-10', category: 'statistics' },
     health: { version: '1', category: 'health', individualGrant: true },
   },
+  maxAge: 180 * 24 * 60 * 60 * 1000,
 });
 type Id = 'analytics' | 'health';
 export type Inference = Expect<Equal<typeof consent, ConsentManager<Id, 'statistics' | 'health'>>>;
 
-// @ts-expect-error id desconhecido em decide
+// @ts-expect-error unknown id in decide
 consent.decide({ typo: 'granted' });
 
-// ConsentManager<P, C> é atribuível a ConsentManager.
+// The effective maxAge is a number.
+export type MaxAgeIsNumber = Expect<Equal<typeof consent.maxAge, number>>;
+
+// ConsentManager<P, C> is assignable to ConsentManager.
 export type AssignableToGeneral = Expect<Assignable<typeof consent, ConsentManager>>;
 
-// Compatibilidade com useSyncExternalStore e tipo do snapshot devolvido.
+// Compatibility with useSyncExternalStore and type of the returned snapshot.
 export const state = useSyncExternalStore(
   consent.subscribe,
   consent.getSnapshot,

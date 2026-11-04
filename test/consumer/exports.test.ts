@@ -3,17 +3,20 @@ import { describe, it } from 'node:test';
 
 import { createConsentManager } from 'lgpder';
 
-describe('pacote compilado, importado pelo nome lgpder', () => {
-  it('a única exportação de runtime é createConsentManager', async () => {
+/** 2026-10-31T12:00:00.000Z. */
+const INSTANT = 1_793_448_000_000;
+
+describe('compiled package, imported by the name lgpder', () => {
+  it('the only runtime export is createConsentManager', async () => {
     const exported = await import('lgpder');
 
     assert.deepStrictEqual(Object.keys(exported), ['createConsentManager']);
   });
 
-  it('executa o fluxo mínimo: criar, decidir e ler', () => {
+  it('runs the minimal flow: create, decide and read', () => {
     const consent = createConsentManager({
       purposes: { analytics: { version: '2026-10' }, ads: {} },
-      now: () => 1_793_448_000_000,
+      now: () => INSTANT,
     });
 
     consent.decide({ analytics: 'granted', ads: 'denied' });
@@ -21,9 +24,20 @@ describe('pacote compilado, importado pelo nome lgpder', () => {
     assert.deepStrictEqual(consent.getSnapshot().record, {
       format: 1,
       decisions: {
-        analytics: { status: 'granted', version: '2026-10', decidedAt: 1_793_448_000_000 },
-        ads: { status: 'denied', decidedAt: 1_793_448_000_000 },
+        analytics: { status: 'granted', version: '2026-10', decidedAt: INSTANT },
+        ads: { status: 'denied', decidedAt: INSTANT },
       },
     });
+  });
+
+  it('hydration discards a decision older than maxAge', () => {
+    const consent = createConsentManager({
+      purposes: { ads: {} },
+      record: { format: 1, decisions: { ads: { status: 'granted', decidedAt: INSTANT - 1_000 } } },
+      now: () => INSTANT,
+      maxAge: 1_000,
+    });
+
+    assert.equal(consent.getSnapshot().status.ads, 'pending');
   });
 });

@@ -2,44 +2,55 @@ import { parseOptions } from './config.ts';
 import type {
   ChangeSource,
   ConsentChange,
+  ConsentDecision,
   ConsentManager,
   ConsentSnapshot,
   DecidedStatus,
 } from './index.ts';
-import { createDecision, readRecord, sameDecision, type Decisions } from './record.ts';
+import {
+  createDecision,
+  discardExpired,
+  readRecord,
+  sameDecision,
+  type Decisions,
+} from './record.ts';
 import { buildServerSnapshot, buildSnapshot } from './snapshot.ts';
 import { describe, isDecidedStatus, isFunction, isPlainObject, isTimestamp } from './validation.ts';
 
-// O build não inclui tipos de DOM nem do Node, por isso a declaração. A chamada resolve o global
-// vigente no momento do erro, e não o da importação.
+// The core compiles without DOM and Node types (tsconfig.core.json), hence the declaration. The
+// call resolves the global in effect when the error happens, not the one at import time.
 declare function queueMicrotask(callback: () => void): void;
 
-/** Pedido de decisão alinhado aos ids configurados; `undefined` significa "sem alteração". */
+/** Decision request aligned with the configured ids; `undefined` means "no change". */
 type Request = readonly (DecidedStatus | undefined)[];
 
-/** Gravação calculada por uma mutação: posição em `ids`, id e situação pedida. */
+/** Write computed by a mutation: position in `ids`, id and requested status. */
 type Write = readonly [index: number, id: string, status: DecidedStatus];
 
 interface Subscription {
   readonly listener: (change: ConsentChange) => unknown;
-  /** Total de alterações confirmadas antes da inscrição: nenhuma delas é entregue. */
+  /** Number of changes committed before the subscription: none of them is delivered. */
   readonly since: number;
 }
 
 interface Pending {
-  /** Ordem de confirmação da alteração, a partir de 1. */
+  /** Commit order of the change, starting at 1. */
   readonly seq: number;
   readonly change: ConsentChange;
 }
 
-/** Cria o gerenciador: estado, operações, fila de notificações e entrega. */
+/** Creates the manager: state, operations, notification queue and delivery. */
 export function createManager(options: unknown): ConsentManager {
   const { model, record } = parseOptions(options);
-  const { ids, positions, versions, grantable, now } = model;
+  const { ids, positions, versions, grantable, now, maxAge } = model;
   const serverSnapshot = buildServerSnapshot(ids);
-  // Hidratação: não notifica, não chama o relógio e, sem decisão válida, adota o snapshot de
-  // servidor.
-  let decisions: Decisions = readRecord(record, ids);
+
+  /** Reads an untrusted record and discards the decisions that are no longer current. */
+  const readCurrent = (input: unknown): (ConsentDecision | undefined)[] =>
+    discardExpired(readRecord(input, ids), now, maxAge);
+
+  // Hydration: does not notify and, without a current decision, adopts the server snapshot.
+  let decisions: Decisions = readCurrent(record);
   let snapshot = decisions.some((decision) => decision !== undefined)
     ? buildSnapshot(model, decisions, serverSnapshot)
     : serverSnapshot;
@@ -49,24 +60,25 @@ export function createManager(options: unknown): ConsentManager {
   let commits = 0;
   let delivering = false;
 
-  // Pedidos fixos dos lotes: a configuração não muda durante a vida da instância.
+  // Fixed requests of the bulk operations: the configuration does not change during the lifetime
+  // of the instance.
   const grantAllRequest: Request = grantable.map((reached) => (reached ? 'granted' : undefined));
   const denyAllRequest: Request = ids.map(() => 'denied');
 
-  /** Entrega a fila em ordem FIFO até esvaziá-la, inclusive o que os ouvintes enfileirarem. */
+  /** Delivers the queue in FIFO order until it is empty, including what listeners enqueue. */
   const deliver = (): void => {
     delivering = true;
     try {
       for (let pending = queue.shift(); pending !== undefined; pending = queue.shift()) {
-        // A iteração do Set é viva: inscrição cancelada durante a entrega não é visitada.
+        // Set iteration is live: a subscription cancelled during delivery is not visited.
         for (const subscription of subscriptions) {
           if (subscription.since >= pending.seq) continue;
-          // Chamada sem `this`, para não expor a inscrição ao ouvinte.
+          // Called without `this`, so the subscription is not exposed to the listener.
           const { listener } = subscription;
           try {
             listener(pending.change);
           } catch (error) {
-            // Os demais ouvintes e a operação seguem; o erro continua visível.
+            // The other listeners and the operation go on; the error stays visible.
             queueMicrotask(() => {
               throw error;
             });
@@ -78,11 +90,11 @@ export function createManager(options: unknown): ConsentManager {
     }
   };
 
-  /** Confirma a alteração e a notifica. */
+  /** Commits the change and notifies it. */
   const commit = (next: Decisions, changed: string[], source: ChangeSource): void => {
     const previous = snapshot;
-    // O snapshot e a notificação são montados antes de o estado mudar: se a montagem lançar,
-    // nada muda.
+    // The snapshot and the notification are built before the state changes: if building throws,
+    // nothing changes.
     const current = buildSnapshot(model, next, previous);
     const change: ConsentChange = Object.freeze({
       source,
@@ -94,11 +106,11 @@ export function createManager(options: unknown): ConsentManager {
     snapshot = current;
     commits += 1;
     queue.push({ seq: commits, change });
-    // Reentrância: a entrega em andamento leva esta notificação depois da atual.
+    // Reentrancy: the delivery in progress takes this notification after the current one.
     if (!delivering) deliver();
   };
 
-  /** Grava, em uma operação atômica, os pedidos que mudam a situação efetiva. */
+  /** Writes, in one atomic operation, the requests that change the effective status. */
   const apply = (requested: Request): void => {
     const { status } = snapshot;
     const writes: Write[] = [];
@@ -107,12 +119,12 @@ export function createManager(options: unknown): ConsentManager {
       if (value !== undefined && value !== status[id]) writes.push([index, id, value]);
     }
     if (writes.length === 0) return;
-    // Uma leitura do relógio por chamada efetiva, depois da validação e do cálculo: o lote
-    // compartilha o instante, e entradas inválidas e no-ops nunca chamam o relógio.
+    // One clock read per effective call, after validation and computation: the batch shares the
+    // instant, and invalid input and no-ops never call the clock.
     const decidedAt = now();
     if (!isTimestamp(decidedAt)) {
       throw new TypeError(
-        '[lgpder] "now" deve retornar um inteiro não negativo (milissegundos desde a época Unix).',
+        '[lgpder] "now" must return a non-negative safe integer (milliseconds since the Unix epoch).',
       );
     }
     const next = decisions.slice();
@@ -130,21 +142,19 @@ export function createManager(options: unknown): ConsentManager {
   const decide = (choices: unknown): void => {
     if (!isPlainObject(choices)) {
       throw new TypeError(
-        `[lgpder] As decisões devem ser um objeto simples; recebido: ${describe(choices)}.`,
+        `[lgpder] Choices must be a plain object; received: ${describe(choices)}.`,
       );
     }
-    // A entrada inteira é validada antes de qualquer efeito, cada chave antes do seu valor. O
-    // pedido é preenchido, sem buracos: uma posição vazia seria lida de um protótipo poluído.
+    // The whole input is validated before any effect.
     const requested = new Array<DecidedStatus | undefined>(ids.length).fill(undefined);
-    for (const key of Object.keys(choices)) {
+    for (const [key, value] of Object.entries(choices)) {
       const index = positions.get(key);
       if (index === undefined) {
-        throw new RangeError(`[lgpder] Finalidade desconhecida: ${JSON.stringify(key)}.`);
+        throw new RangeError(`[lgpder] Unknown purpose: ${JSON.stringify(key)}.`);
       }
-      const value = choices[key];
       if (value !== undefined && !isDecidedStatus(value)) {
         throw new TypeError(
-          `[lgpder] A decisão para ${JSON.stringify(key)} deve ser "granted" ou "denied"; recebido: ${describe(value)}.`,
+          `[lgpder] The choice for ${JSON.stringify(key)} must be "granted" or "denied"; received: ${describe(value)}.`,
         );
       }
       requested[index] = value;
@@ -160,13 +170,13 @@ export function createManager(options: unknown): ConsentManager {
     apply(denyAllRequest);
   };
 
-  /** Substitui todas as decisões pelo conteúdo válido de `input`, sem mesclar. */
+  /** Replaces every decision with the current valid content of `input`, without merging. */
   const restore = (input: unknown): void => {
-    const next = readRecord(input, ids);
+    const next = readCurrent(input);
     const changed: string[] = [];
     for (const [index, id] of ids.entries()) {
       const current = decisions[index];
-      // Entrada igual mantém a referência da decisão atual, que fica estável entre snapshots.
+      // An equal entry keeps the reference of the current decision, stable across snapshots.
       if (sameDecision(current, next[index])) next[index] = current;
       else changed.push(id);
     }
@@ -176,7 +186,7 @@ export function createManager(options: unknown): ConsentManager {
   const subscribe = (listener: unknown): (() => void) => {
     if (!isFunction(listener)) {
       throw new TypeError(
-        `[lgpder] O ouvinte deve ser uma função; recebido: ${describe(listener)}.`,
+        `[lgpder] The listener must be a function; received: ${describe(listener)}.`,
       );
     }
     const subscription: Subscription = { listener, since: commits };
@@ -188,6 +198,7 @@ export function createManager(options: unknown): ConsentManager {
 
   return Object.freeze({
     purposes: model.purposes,
+    maxAge,
     getSnapshot,
     getServerSnapshot,
     decide,

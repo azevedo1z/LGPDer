@@ -93,7 +93,7 @@ Mudar a versão não substitui o dever de informar. A lei não determina que o c
 
 - **Obrigação legal:** A LGPD não estabelece prazo de validade nem renovação periódica do consentimento; nenhum dispositivo nesse sentido foi encontrado no texto compilado.
 - **Boa prática:** O Guia de Cookies não fixa prazo de validade do consentimento; trata da duração de cookies e da retenção de dados (p. 11-12 e 16-17).
-- **Decisão técnica do LGPDer:** O LGPDer não expira decisões. A aplicação pode aplicar uma política própria de renovação a partir de `decidedAt`: filtrar o registro antes de passá-lo a `record` ou a `restore`, o que deixa a finalidade `'pending'` sem que isso seja revogação, ou mudar a versão.
+- **Decisão técnica do LGPDer:** As decisões, concessões e recusas, expiram depois de `maxAge` (padrão: 365 dias, configurável). A expiração é avaliada na hidratação e em `restore`, e a decisão expirada é descartada: a finalidade volta a `'pending'`, sem que isso seja revogação, e o titular é perguntado de novo. A aplicação pode ainda renovar antes do prazo mudando a versão.
 
 ### Minimização
 
@@ -142,7 +142,7 @@ O LGPDer ajuda a aplicação a registrar, consultar, alterar e revogar decisões
 11. Avaliar e cumprir a Lei nº 15.211/2025 quando o produto for direcionado a crianças e adolescentes ou de acesso provável por eles, inclusive a configuração mais protetiva por padrão (art. 7º).
 12. Atender aos direitos dos titulares (art. 18), inclusive a eliminação dos dados tratados com consentimento (art. 18, VI, observado o art. 16) e a oposição (art. 18, § 2º).
 13. Garantir a segurança do ambiente em que a biblioteca roda e dos registros persistidos ou transmitidos (arts. 46 e 49), inclusive contra XSS e contra scripts de terceiros que possam ler ou alterar o armazenamento local.
-14. Definir, se desejar, uma política própria de renovação das decisões (veja [Expiração](#expiração)), além do prazo de retenção dos dados coletados com base no consentimento.
+14. Definir o prazo de validade das decisões, se o padrão de 365 dias não servir (veja [Expiração](#expiração)), além do prazo de retenção dos dados coletados com base no consentimento.
 15. Cumprir as demais obrigações da LGPD fora do escopo do LGPDer: aviso de privacidade e política de cookies, encarregado (art. 41), registro das operações (art. 37), relatório de impacto quando determinado pela ANPD (art. 38) e comunicação de incidentes de segurança (art. 48).
 16. Avaliar outras normas aplicáveis ao seu contexto, como o Marco Civil da Internet (Lei nº 12.965/2014, art. 7º, VII e IX) e normas setoriais.
 

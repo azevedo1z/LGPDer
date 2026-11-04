@@ -1,144 +1,161 @@
 import type { PurposeConfig } from './index.ts';
 import {
   describe,
+  isDuration,
   isFunction,
   isPlainObject,
   isValidId,
   isVersion,
+  ownValue,
   type PlainObject,
 } from './validation.ts';
 
-/** Configuração validada e copiada. Objeto congelado. */
+/** One day, in milliseconds. */
+const DAY = 86_400_000;
+
+/** Default `maxAge`: 365 days. */
+const DEFAULT_MAX_AGE = 365 * DAY;
+
+/** Validated and copied configuration. Frozen object. */
 export interface Model {
-  /** Ids das finalidades, na ordem da configuração. */
+  /** Purpose ids, in configuration order. */
   readonly ids: readonly string[];
-  /** Posição de cada id em `ids`. */
+  /** Position of each id in `ids`. */
   readonly positions: ReadonlyMap<string, number>;
-  /** Versão configurada de cada finalidade, alinhada a `ids`; `undefined` quando não versionada. */
+  /** Configured version of each purpose, aligned with `ids`; `undefined` when not versioned. */
   readonly versions: readonly (string | undefined)[];
-  /** Se `grantAll` alcança cada finalidade, alinhado a `ids` (sem `individualGrant: true`). */
+  /** Whether `grantAll` reaches each purpose, aligned with `ids` (no `individualGrant: true`). */
   readonly grantable: readonly boolean[];
-  /** Cópia pública e congelada da configuração. */
+  /** Public frozen copy of the configuration. */
   readonly purposes: Readonly<Record<string, PurposeConfig>>;
-  /** Relógio definido na criação, chamado sem `this`. */
+  /** Clock fixed at creation, called without `this`. */
   readonly now: () => unknown;
+  /** Maximum age of a decision, in milliseconds. */
+  readonly maxAge: number;
 }
 
-/** Resultado de {@link parseOptions}. */
+/** Result of {@link parseOptions}. */
 export interface ParsedOptions {
   readonly model: Model;
-  /** Valor lido de `options.record`. Fica fora do modelo para não reter o objeto recebido. */
+  /**
+   * Value of `options.record` when it is an own property. Kept out of the model so that the
+   * received object is not retained.
+   */
   readonly record: unknown;
 }
 
-const OPTION_KEYS: readonly string[] = ['purposes', 'record', 'now'];
+const OPTION_KEYS: readonly string[] = ['purposes', 'record', 'now', 'maxAge'];
 const PURPOSE_KEYS: readonly string[] = ['version', 'category', 'individualGrant'];
 
 /**
- * Valida `options` em ordem fixa, que define o erro lançado quando há mais de um problema, e
- * copia a configuração. Só as chaves de `Object.keys` são consideradas, e cada valor é lido uma
- * única vez.
+ * Validates `options` and copies the configuration. The options are written by the developer, so
+ * they are checked directly for type and format. Checks run in a fixed order, which defines the
+ * error thrown when there is more than one problem: the options object, unknown options,
+ * `purposes` and each purpose in key order, `now` and `maxAge`. `record` is untrusted data: it is
+ * read only as an own property and never validated here. `now` and `maxAge`, which govern the
+ * expiry of the record, are also read only as own properties.
  */
 export function parseOptions(options: unknown): ParsedOptions {
   if (!isPlainObject(options)) {
-    throw new TypeError(
-      `[lgpder] As opções devem ser um objeto simples; recebido: ${describe(options)}.`,
-    );
+    throw new TypeError(`[lgpder] Options must be a plain object; received: ${describe(options)}.`);
   }
-  const keys = Object.keys(options);
-  const unknownOption = findUnknownKey(keys, OPTION_KEYS);
+  const unknownOption = findUnknownKey(options, OPTION_KEYS);
   if (unknownOption !== undefined) {
-    throw new TypeError(`[lgpder] Opção desconhecida: ${JSON.stringify(unknownOption)}.`);
+    throw new TypeError(`[lgpder] Unknown option: ${JSON.stringify(unknownOption)}.`);
+  }
+  const { purposes } = options;
+  // `record` is the entry point of untrusted data, and `now` and `maxAge` decide whether its
+  // decisions are still current: an inherited value, planted on a polluted prototype, would hydrate
+  // decisions the data subject never made or revive expired ones.
+  const record = ownValue(options, 'record');
+  const now = ownValue(options, 'now');
+  const maxAge = ownValue(options, 'maxAge');
+  const parsed = parsePurposes(purposes);
+  if (now !== undefined && !isFunction(now)) {
+    throw new TypeError(`[lgpder] "now" must be a function; received: ${describe(now)}.`);
+  }
+  if (maxAge !== undefined && !isDuration(maxAge)) {
+    throw new TypeError('[lgpder] "maxAge" must be a positive safe integer (milliseconds).');
   }
 
-  const purposes = readOwn(options, keys, 'purposes');
+  const model: Model = {
+    ...parsed,
+    now: now ?? createDefaultClock(),
+    maxAge: maxAge ?? DEFAULT_MAX_AGE,
+  };
+  return { model: Object.freeze(model), record };
+}
+
+/** Part of the model that comes from `purposes`. */
+type PurposesModel = Pick<Model, 'ids' | 'positions' | 'versions' | 'grantable' | 'purposes'>;
+
+/** Validates `purposes`, each purpose in key order, and builds its part of the model. */
+function parsePurposes(purposes: unknown): PurposesModel {
   if (!isPlainObject(purposes)) {
     throw new TypeError(
-      `[lgpder] "purposes" deve ser um objeto simples; recebido: ${describe(purposes)}.`,
+      `[lgpder] "purposes" must be a plain object; received: ${describe(purposes)}.`,
     );
   }
-  const ids = Object.keys(purposes);
-  if (ids.length === 0) {
-    throw new TypeError('[lgpder] "purposes" deve declarar ao menos uma finalidade.');
+  const entries = Object.entries(purposes);
+  if (entries.length === 0) {
+    throw new TypeError('[lgpder] "purposes" must declare at least one purpose.');
   }
+  const ids: string[] = [];
   const positions = new Map<string, number>();
   const versions: (string | undefined)[] = [];
   const grantable: boolean[] = [];
   const copies: Record<string, PurposeConfig> = {};
-  for (const [index, id] of ids.entries()) {
-    // O id é validado antes de o valor ser lido, para que um id inválido nunca acione um getter.
+  for (const [index, [id, value]] of entries.entries()) {
     if (!isValidId(id)) {
-      throw new TypeError(`[lgpder] Identificador de finalidade inválido: ${JSON.stringify(id)}.`);
+      throw new TypeError(`[lgpder] Invalid purpose id: ${JSON.stringify(id)}.`);
     }
-    const purpose = parsePurpose(id, purposes[id]);
+    const config = parsePurpose(id, value);
+    ids.push(id);
     positions.set(id, index);
-    versions.push(purpose.version);
-    grantable.push(purpose.grantable);
-    copies[id] = purpose.config;
+    versions.push(config.version);
+    grantable.push(config.individualGrant !== true);
+    copies[id] = config;
   }
-
-  const now = readOwn(options, keys, 'now');
-  if (now !== undefined && !isFunction(now)) {
-    throw new TypeError(`[lgpder] "now" deve ser uma função; recebido: ${describe(now)}.`);
-  }
-
-  const model: Model = {
+  return {
     ids: Object.freeze(ids),
     positions,
     versions: Object.freeze(versions),
     grantable: Object.freeze(grantable),
     purposes: Object.freeze(copies),
-    // O relógio padrão é lido na criação, e não na importação do módulo: vale o Date.now vigente
-    // quando o gerenciador é criado.
-    now: now ?? Date.now,
   };
-  return { model: Object.freeze(model), record: readRecordOption(options, keys) };
-}
-
-/** Finalidade validada: a cópia pública e os dados que o modelo usa. */
-interface ParsedPurpose {
-  /** Cópia congelada. */
-  readonly config: PurposeConfig;
-  readonly version: string | undefined;
-  /** Se `grantAll` alcança a finalidade. */
-  readonly grantable: boolean;
 }
 
 /**
- * Valida a configuração de uma finalidade. A cópia tem somente as propriedades informadas com
- * valor diferente de `undefined`, na ordem `version`, `category`, `individualGrant`. O modelo usa
- * os valores validados, e não a cópia: ler dela uma propriedade ausente consultaria o protótipo,
- * que pode estar poluído.
+ * Validates the configuration of one purpose and returns a frozen copy with only the properties
+ * given with a value other than `undefined`, in the order `version`, `category`,
+ * `individualGrant`.
  */
-function parsePurpose(id: string, value: unknown): ParsedPurpose {
+function parsePurpose(id: string, value: unknown): PurposeConfig {
   if (!isPlainObject(value)) {
     throw new TypeError(
-      `[lgpder] A configuração da finalidade ${JSON.stringify(id)} deve ser um objeto simples; recebido: ${describe(value)}.`,
+      `[lgpder] The configuration of purpose ${JSON.stringify(id)} must be a plain object; received: ${describe(value)}.`,
     );
   }
-  const keys = Object.keys(value);
-  const unknownKey = findUnknownKey(keys, PURPOSE_KEYS);
+  const unknownKey = findUnknownKey(value, PURPOSE_KEYS);
   if (unknownKey !== undefined) {
     throw new TypeError(
-      `[lgpder] A finalidade ${JSON.stringify(id)} tem a propriedade desconhecida ${JSON.stringify(unknownKey)}.`,
+      `[lgpder] Purpose ${JSON.stringify(id)} has the unknown property ${JSON.stringify(unknownKey)}.`,
     );
   }
-  const version = readOwn(value, keys, 'version');
+  const { version, category, individualGrant } = value;
   if (version !== undefined && !isVersion(version)) {
     throw new TypeError(
-      `[lgpder] A versão da finalidade ${JSON.stringify(id)} deve ser um texto não vazio.`,
+      `[lgpder] The version of purpose ${JSON.stringify(id)} must be a non-empty string.`,
     );
   }
-  const category = readOwn(value, keys, 'category');
   if (category !== undefined && !isValidId(category)) {
     throw new TypeError(
-      `[lgpder] A categoria da finalidade ${JSON.stringify(id)} deve ser um identificador válido.`,
+      `[lgpder] The category of purpose ${JSON.stringify(id)} must be a valid id.`,
     );
   }
-  const individualGrant = readOwn(value, keys, 'individualGrant');
   if (individualGrant !== undefined && typeof individualGrant !== 'boolean') {
     throw new TypeError(
-      `[lgpder] "individualGrant" da finalidade ${JSON.stringify(id)} deve ser booleano.`,
+      `[lgpder] "individualGrant" of purpose ${JSON.stringify(id)} must be a boolean.`,
     );
   }
 
@@ -146,30 +163,21 @@ function parsePurpose(id: string, value: unknown): ParsedPurpose {
   if (version !== undefined) copy.version = version;
   if (category !== undefined) copy.category = category;
   if (individualGrant !== undefined) copy.individualGrant = individualGrant;
-  return { config: Object.freeze(copy), version, grantable: individualGrant !== true };
+  return Object.freeze(copy);
 }
 
-/** Primeira chave, na ordem de `Object.keys`, que não está em `allowed`. */
-function findUnknownKey(keys: readonly string[], allowed: readonly string[]): string | undefined {
-  return keys.find((key) => !allowed.includes(key));
-}
-
-/**
- * Lê `key` somente se ela estiver em `keys`, o resultado de `Object.keys(object)`: propriedade
- * herdada ou não enumerável vale `undefined` e não é lida.
- */
-function readOwn(object: PlainObject, keys: readonly string[], key: string): unknown {
-  return keys.includes(key) ? object[key] : undefined;
+/** First own enumerable string key of `object` that is not in `allowed`. */
+function findUnknownKey(object: PlainObject, allowed: readonly string[]): string | undefined {
+  return Object.keys(object).find((key) => !allowed.includes(key));
 }
 
 /**
- * Lê `options.record`. Se a leitura lançar, a exceção é descartada e vale registro vazio: o
- * registro é dado não confiável e nunca impede a criação.
+ * Default clock: the start of the current UTC day. A precise instant, persisted and possibly sent
+ * to the server, would work as a pseudo-identifier of the browser. `Date.now` is read when the
+ * manager is created, not when the module is imported, and replacing it later does not affect the
+ * manager.
  */
-function readRecordOption(options: PlainObject, keys: readonly string[]): unknown {
-  try {
-    return readOwn(options, keys, 'record');
-  } catch {
-    return undefined;
-  }
+function createDefaultClock(): () => number {
+  const dateNow = Date.now;
+  return () => Math.floor(dateNow() / DAY) * DAY;
 }

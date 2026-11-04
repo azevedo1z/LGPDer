@@ -2,6 +2,17 @@
 
 Mudanças relevantes do pacote `lgpder`, por versão, com a data de publicação e a lista de mudanças. A política de versões está na seção "Versionamento do pacote" do README.
 
+## Unreleased
+
+- Licença MIT (arquivo `LICENSE`); o pacote deixa de ser `private`.
+- Nova opção `maxAge`, em milissegundos (padrão: 365 dias), e nova propriedade `ConsentManager.maxAge` com o valor efetivo. Concessões e recusas expiram: a expiração é avaliada, com o relógio configurado, na hidratação e em `restore`, e a decisão expirada, ou datada depois do relógio, é descartada e a finalidade volta a `'pending'`. Se o relógio lançar ou devolver valor inválido nessa avaliação, as decisões avaliadas são descartadas, sem erro. A criação passa a chamar o relógio no máximo uma vez, e só quando o registro hidratado tem decisões válidas; `restore` também.
+- O relógio padrão passa a devolver o início do dia UTC do `Date.now()`, para que `decidedAt` não funcione como pseudoidentificador. A opção `now` continua permitindo maior precisão.
+- A validação da configuração e de `decide` fica direta, por tipo e formato, sem a blindagem contra protótipo poluído: propriedades não enumeráveis de `purposes`, `now` e `maxAge` e um `purposes` herdado passam a ser lidos, e a exceção de um getter de `options.record` passa a se propagar. Continuam a recusa de chaves desconhecidas, a lista de ids reservados e a blindagem completa na leitura do registro, que inclui ler `options.record`, `now` e `maxAge` só como propriedades próprias: um valor herdado é ignorado e não concede nem revive decisões.
+- Mensagens de erro, comentários e JSDoc em inglês, mantendo o prefixo `[lgpder]`.
+- A receita de persistência e a ligação com cookie deixam de passar um relógio próprio, e o `Max-Age` do cookie passa a seguir `consent.maxAge`.
+- Ferramental: removida a verificação dos tipos com TypeScript 5.6 e 7 (`test:types-compat`); `publint` e `attw` continuam; cobertura mínima de 90%; tamanho do núcleo verificado com `size-limit` (até 3 kB gzip); direção das dependências entre núcleo e camadas imposta pelo ESLint; CI no GitHub Actions com `npm run check`.
+- O pacote publicado passa a incluir todos os `.d.ts` de `dist` e o `CHANGELOG.md`.
+
 ## 0.1.0 (não publicada)
 
 Primeira versão do núcleo.

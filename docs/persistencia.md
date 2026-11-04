@@ -8,56 +8,56 @@ A receita oficial de persistência, `examples/consent-store.ts`, é código da a
 
 ```ts
 /**
- * Receita de persistência do LGPDer: liga um gerenciador a um armazenamento síncrono do
- * navegador, como `window.localStorage` ou um cookie.
+ * LGPDer persistence recipe: connects a manager to a synchronous browser storage, such as
+ * `window.localStorage` or a cookie.
  *
- * Este arquivo é código da aplicação e não faz parte do pacote publicado. Ele é testado no
- * repositório e reproduzido literalmente em `docs/persistencia.md`.
+ * This file is application code and is not part of the published package. It is tested in the
+ * repository and reproduced verbatim in `docs/persistencia.md`.
  */
 import type { ConsentChoices, ConsentManager } from 'lgpder';
 
 /**
- * Armazenamento síncrono do registro serializado. Os três métodos podem lançar exceções. `read`
- * devolve o texto gravado sem transformá-lo: a receita confirma cada gravação pela leitura, porque
- * alguns armazenamentos, como o cookie, descartam a gravação sem lançar.
+ * Synchronous storage of the serialized record. The three methods may throw. `read` returns the
+ * written text without transforming it: the recipe confirms each write by reading it back, because
+ * some storages, such as the cookie, discard the write without throwing.
  */
 export interface RecordStore {
-  /** Devolve o texto salvo, exatamente como foi gravado, ou `null` quando não há registro. */
+  /** Returns the saved text, exactly as it was written, or `null` when there is no record. */
   read(): string | null;
-  /** Substitui o texto salvo. */
+  /** Replaces the saved text. */
   write(value: string): void;
-  /** Remove o texto salvo. */
+  /** Removes the saved text. */
   remove(): void;
 }
 
-/** Ações que a aplicação usa no lugar de `restore`, `decide`, `grantAll` e `denyAll`. */
+/** Actions that the application uses instead of `restore`, `decide`, `grantAll` and `denyAll`. */
 export interface StoredConsent<P extends string> {
-  /** Adota o registro salvo, se ele mudou desde a última leitura ou gravação desta página. */
+  /** Adopts the saved record, if it changed since the last read or write of this page. */
   readonly sync: () => void;
-  /** Adota um registro externo, como o do backend da aplicação, e o grava no armazenamento. */
+  /** Adopts an external record, such as the one of the application backend, and writes it. */
   readonly adopt: (record: unknown) => void;
-  /** Adota o registro salvo e então chama `decide`. */
+  /** Adopts the saved record and then calls `decide`. */
   readonly decide: (choices: ConsentChoices<P>) => void;
-  /** Adota o registro salvo e então chama `grantAll`. */
+  /** Adopts the saved record and then calls `grantAll`. */
   readonly grantAll: () => void;
-  /** Adota o registro salvo e então chama `denyAll`. */
+  /** Adopts the saved record and then calls `denyAll`. */
   readonly denyAll: () => void;
 }
 
 /**
- * Adota o registro salvo, grava cada decisão registrada nesta página e, antes de cada nova
- * decisão, adota o registro mais recente. Assim, uma página desatualizada nunca regrava como
- * concedida uma finalidade revogada em outra aba. Cada gravação é confirmada pela leitura; se ela
- * não se confirma, ou se a leitura anterior à decisão falhou, o registro salvo é removido, para
- * nunca ficar mais permissivo que a página.
+ * Adopts the saved record, writes each decision recorded in this page and, before each new
+ * decision, adopts the most recent record. This way, an outdated page never writes back as granted
+ * a purpose revoked in another tab. Each write is confirmed by reading it back; if it is not
+ * confirmed, or if the read before the decision failed, the saved record is removed, so that it is
+ * never more permissive than the page.
  */
 export function connectStore<P extends string>(
   consent: ConsentManager<P>,
   store: RecordStore,
 ): StoredConsent<P> {
-  // Último texto lido ou gravado por esta página.
+  // Last text read or written by this page.
   let lastSeen: string | null | undefined;
-  // Se a última leitura falhou, a memória pode estar desatualizada em relação ao registro salvo.
+  // If the last read failed, the memory may be outdated in relation to the saved record.
   let readFailed = false;
 
   const sync = (): void => {
@@ -66,46 +66,46 @@ export function connectStore<P extends string>(
       saved = store.read();
     } catch {
       readFailed = true;
-      return; // leitura indisponível: o estado em memória continua valendo
+      return; // read unavailable: the state in memory still holds
     }
     readFailed = false;
-    if (saved === lastSeen) return; // nada novo desde a última leitura ou gravação
+    if (saved === lastSeen) return; // nothing new since the last read or write
     lastSeen = saved;
     consent.restore(saved);
   };
 
-  // Sem a gravação, o registro salvo poderia ficar mais permissivo que esta página (por exemplo,
-  // mantendo uma concessão já revogada): por isso ele é removido.
+  // Without the write, the saved record could become more permissive than this page (for example,
+  // keeping a grant already revoked): that is why it is removed.
   const removeSaved = (): void => {
     try {
       store.remove();
-      lastSeen = store.read(); // se a remoção foi descartada, o que restou não é readotado
+      lastSeen = store.read(); // if the removal was discarded, what is left is not adopted again
     } catch {
-      // Armazenamento inacessível: lastSeen não muda, então o que restou não é readotado.
+      // Storage unreachable: lastSeen does not change, so what is left is not adopted again.
     }
   };
 
   const save = (serialized: string): void => {
     try {
       store.write(serialized);
-      // Alguns armazenamentos, como o cookie, descartam a gravação sem lançar: confirme lendo.
+      // Some storages, such as the cookie, discard the write without throwing: confirm by reading.
       if (store.read() === serialized) {
         lastSeen = serialized;
         return;
       }
     } catch {
-      // gravação ou leitura indisponível: segue para a remoção
+      // write or read unavailable: go on to the removal
     }
     removeSaved();
   };
 
   consent.subscribe(({ source, snapshot }) => {
-    // Restaurações não são gravadas aqui: as do sync vieram do armazenamento, e adopt grava as
-    // feitas pela aplicação.
+    // Restores are not written here: the ones of sync came from the storage, and adopt writes the
+    // ones made by the application.
     if (source !== 'decision') return;
-    // Com a leitura anterior falha, a memória pode estar desatualizada: gravá-la poderia regravar
-    // uma concessão revogada em outra aba. Depois da remoção, a memória fica como não conferida,
-    // para que a próxima leitura bem-sucedida adote o registro salvo.
+    // With the previous read failed, the memory may be outdated: writing it could write back a
+    // grant revoked in another tab. After the removal, the memory is marked as unchecked, so that
+    // the next successful read adopts the saved record.
     if (readFailed) {
       removeSaved();
       lastSeen = undefined;
@@ -202,14 +202,12 @@ A interface usa `actions.decide`, `actions.grantAll` e `actions.denyAll` no luga
 
 ## Ligação com cookie
 
-Variante da ligação com `localStorage`: `cookieStore` substitui `localStore`, e as duas últimas declarações substituem `consent` e `actions`. Com cookie, o registro vai ao servidor em toda requisição, e um instante em milissegundos, valor persistente de alta entropia, poderia singularizar o navegador e funcionar como pseudoidentificador; por isso o gerenciador usa relógio arredondado ao dia. Os ouvintes de `pageshow` e `visibilitychange` continuam úteis; o evento `storage` não dispara para cookies.
+Variante da ligação com `localStorage`: `cookieStore` substitui `localStore`, e as duas últimas declarações substituem `consent` e `actions`. Com cookie, o registro vai ao servidor em toda requisição, e um instante em milissegundos, valor persistente de alta entropia, poderia singularizar o navegador e funcionar como pseudoidentificador; o relógio padrão do gerenciador já devolve o início do dia UTC, por isso a ligação não passa `now`. O `Max-Age` do cookie é o `maxAge` do gerenciador, contado a partir da última gravação. Como cada gravação reescreve o registro inteiro e cada decisão expira em `decidedAt + maxAge`, o cookie pode durar mais que as decisões mais antigas que guarda, e o descarte de uma decisão expirada na hidratação ou em `restore` não regrava o cookie. Por isso, quem lê o cookie, inclusive o servidor, deve passar o conteúdo pelo núcleo (opção `record` ou `restore`), que descarta as decisões expiradas, em vez de confiar no que está armazenado. Os ouvintes de `pageshow` e `visibilitychange` continuam úteis; o evento `storage` não dispara para cookies.
 
 ```ts
 // __Host-: o navegador só aceita o cookie com Secure, Path=/ e sem Domain, o que impede que outro
 // host do mesmo domínio ou um caminho mais específico grave um cookie de mesmo nome.
 const COOKIE = '__Host-lgpder';
-const MAX_AGE = 60 * 60 * 24 * 180; // prazo definido pela aplicação
-const DAY = 24 * 60 * 60 * 1000; // um dia em milissegundos
 
 // Atenção: com cookie, o registro é enviado ao servidor em toda requisição ao domínio.
 export const cookieStore: RecordStore = {
@@ -219,19 +217,17 @@ export const cookieStore: RecordStore = {
     return entry === undefined ? null : decodeURIComponent(entry.slice(prefix.length));
   },
   write: (value) => {
-    document.cookie = `${COOKIE}=${encodeURIComponent(value)}; Path=/; Max-Age=${String(MAX_AGE)}; SameSite=Lax; Secure`;
+    // Max-Age em segundos, contado a partir desta gravação: decisões mais antigas expiram antes.
+    const maxAge = Math.ceil(consent.maxAge / 1000);
+    document.cookie = `${COOKIE}=${encodeURIComponent(value)}; Path=/; Max-Age=${String(maxAge)}; SameSite=Lax; Secure`;
   },
   remove: () => {
     document.cookie = `${COOKIE}=; Path=/; Max-Age=0; SameSite=Lax; Secure`;
   },
 };
 
-// Instante arredondado ao dia: em milissegundos, enviado em toda requisição, ele poderia
-// singularizar o navegador.
-export const consent = createConsentManager({
-  purposes: PURPOSES,
-  now: () => Math.floor(Date.now() / DAY) * DAY,
-});
+// O relógio padrão já arredonda o instante ao início do dia UTC.
+export const consent = createConsentManager({ purposes: PURPOSES });
 export const actions = connectStore(consent, cookieStore); // a interface usa actions.decide etc.
 ```
 
@@ -260,7 +256,7 @@ Junto com a receita, adote o registro externo com `actions.adopt(record)`, e nã
 
 - Gravar: `JSON.stringify(snapshot.record)` em notificações de origem `'decision'`, como faz a receita.
 - Carregar: `options.record` na criação ou `restore()` depois dela.
-- Prazo: no armazenamento, o registro dura conforme a política da aplicação, por exemplo o `Max-Age` do cookie. O `localStorage` não tem validade própria, mas o navegador pode apagá-lo: o Safari apaga o armazenamento gravado por script após 7 dias de uso sem interação com o site e limita a 7 dias a validade de cookies gravados por script. Nesses casos, as finalidades voltam a `'pending'`.
+- Prazo: cada decisão vale por `maxAge` (padrão: 365 dias); na hidratação e em `restore`, a decisão expirada é descartada e a finalidade volta a `'pending'`. No armazenamento, o registro dura conforme a política da aplicação, por exemplo o `Max-Age` do cookie, alinhado a `consent.maxAge` na ligação com cookie. O `localStorage` não tem validade própria, mas o navegador pode apagá-lo: o Safari apaga o armazenamento gravado por script após 7 dias de uso sem interação com o site e limita a 7 dias a validade de cookies gravados por script. Nesses casos, as finalidades voltam a `'pending'`.
 - Finalidades removidas da configuração somem do armazenamento na próxima gravação; finalidades novas nascem `'pending'`.
 - Registro com `format` diferente de `1` (por exemplo, gravado por versão futura do pacote) é ignorado e substituído na próxima gravação.
 - Um formato incompatível futuro usará `format: 2`, com leitura do formato `1`, em versão major do pacote.

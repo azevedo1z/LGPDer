@@ -4,75 +4,76 @@ import { runInNewContext } from 'node:vm';
 
 import type { ConsentManager } from 'lgpder';
 
-import { createConsentManager } from '../src/index.ts';
-import { decisionOf, recordOf, serialized } from './support/records.ts';
+import { createConsentManager } from '../../src/index.ts';
+import { decisionOf, recordOf, serialized } from '../support/records.ts';
 import {
   PURPOSES,
   START,
+  createClock,
   setup,
   withArrayPollution,
   withObjectPollution,
   withPrototype,
   type PurposeId,
-} from './support/setup.ts';
+} from '../support/setup.ts';
 
 const EMPTY_RECORD = { format: 1, decisions: {} };
 
-/** Decisões válidas que um registro inválido na raiz não pode fazer valer. */
+/** Valid decisions that a record invalid at the root cannot make effective. */
 const VALID_DECISIONS = { ads: decisionOf('granted') };
 
 const VALID_ANALYTICS = decisionOf('granted', { version: '2026-10' });
 
 /**
- * Texto exato do registro com `analytics` concedida e `ads` recusada: decisões na ordem da
- * configuração e campos na ordem `status`, `version`, `decidedAt`.
+ * Exact text of the record with `analytics` granted and `ads` denied: decisions in configuration
+ * order and fields in the order `status`, `version`, `decidedAt`.
  */
 const SERIALIZED_RECORD =
   '{"format":1,"decisions":{' +
   '"analytics":{"status":"granted","version":"2026-10","decidedAt":1793448000000},' +
   '"ads":{"status":"denied","decidedAt":1793448000000}}}';
 
-describe('registro inválido na raiz equivale a registro vazio', () => {
+describe('a record invalid at the root is an empty record', () => {
   const INVALID_ROOTS = [
     { scenario: 'null', record: null },
     { scenario: 'undefined', record: undefined },
-    { scenario: 'texto com JSON inválido', record: '{"format":1,' },
-    { scenario: "texto vazio ''", record: '' },
-    { scenario: "texto 'null'", record: 'null' },
-    { scenario: "texto '[]'", record: '[]' },
-    { scenario: 'número 42', record: 42 },
-    { scenario: 'booleano true', record: true },
-    { scenario: 'array', record: [VALID_DECISIONS] },
+    { scenario: 'text with invalid JSON', record: '{"format":1,' },
+    { scenario: "empty text ''", record: '' },
+    { scenario: "the text 'null'", record: 'null' },
+    { scenario: "the text '[]'", record: '[]' },
+    { scenario: 'the number 42', record: 42 },
+    { scenario: 'the boolean true', record: true },
+    { scenario: 'an array', record: [VALID_DECISIONS] },
     {
-      scenario: 'objeto com outro protótipo',
+      scenario: 'an object with another prototype',
       record: withPrototype({ format: 1, decisions: VALID_DECISIONS }, {}),
     },
-    { scenario: 'format igual a 2', record: { format: 2, decisions: VALID_DECISIONS } },
+    { scenario: 'format equal to 2', record: { format: 2, decisions: VALID_DECISIONS } },
     {
-      scenario: 'format igual ao texto "1"',
+      scenario: 'format equal to the text "1"',
       record: { format: '1', decisions: VALID_DECISIONS },
     },
-    { scenario: 'format ausente', record: { decisions: VALID_DECISIONS } },
-    { scenario: 'decisions ausente', record: { format: 1 } },
-    { scenario: 'decisions null', record: { format: 1, decisions: null } },
+    { scenario: 'missing format', record: { decisions: VALID_DECISIONS } },
+    { scenario: 'missing decisions', record: { format: 1 } },
+    { scenario: 'null decisions', record: { format: 1, decisions: null } },
     {
-      scenario: 'decisions em array',
+      scenario: 'decisions in an array',
       record: { format: 1, decisions: [decisionOf('granted')] },
     },
     {
-      scenario: 'decisions com outro protótipo',
+      scenario: 'decisions with another prototype',
       record: { format: 1, decisions: withPrototype({ ads: decisionOf('granted') }, {}) },
     },
   ] as const;
 
   for (const { scenario, record } of INVALID_ROOTS) {
-    it(`hidratação com ${scenario}: registro vazio, sem lançar`, () => {
+    it(`hydration with ${scenario}: empty record, without throwing`, () => {
       const { consent } = setup({ record });
 
       assert.deepStrictEqual(consent.getSnapshot().record, EMPTY_RECORD);
     });
 
-    it(`restore com ${scenario}, a partir de um estado com decisões: registro vazio, sem lançar`, () => {
+    it(`restore with ${scenario}, from a state with decisions: empty record, without throwing`, () => {
       const { consent } = setup();
       consent.grantAll();
 
@@ -83,22 +84,22 @@ describe('registro inválido na raiz equivale a registro vazio', () => {
   }
 });
 
-describe('entrada inválida é descartada sozinha', () => {
+describe('an invalid entry is discarded alone', () => {
   const INVALID_ENTRIES = [
     { scenario: "status 'GRANTED'", entry: { status: 'GRANTED', decidedAt: START } },
     { scenario: 'status true', entry: { status: true, decidedAt: START } },
-    { scenario: 'status ausente', entry: { decidedAt: START } },
+    { scenario: 'missing status', entry: { decidedAt: START } },
     { scenario: "status 'pending'", entry: { status: 'pending', decidedAt: START } },
     {
-      scenario: "decidedAt em texto '1793448000000'",
+      scenario: "decidedAt in the text '1793448000000'",
       entry: { status: 'granted', decidedAt: '1793448000000' },
     },
     { scenario: 'decidedAt -1', entry: { status: 'granted', decidedAt: -1 } },
     { scenario: 'decidedAt 1.5', entry: { status: 'granted', decidedAt: 1.5 } },
     { scenario: 'decidedAt null', entry: { status: 'granted', decidedAt: null } },
-    { scenario: 'decidedAt ausente', entry: { status: 'granted' } },
+    { scenario: 'missing decidedAt', entry: { status: 'granted' } },
     {
-      scenario: 'decidedAt acima de Number.MAX_SAFE_INTEGER',
+      scenario: 'decidedAt above Number.MAX_SAFE_INTEGER',
       entry: { status: 'granted', decidedAt: 2 ** 53 },
     },
     { scenario: "version ''", entry: { status: 'granted', version: '', decidedAt: START } },
@@ -107,17 +108,17 @@ describe('entrada inválida é descartada sozinha', () => {
       scenario: 'version null',
       entry: { status: 'granted', version: null, decidedAt: START },
     },
-    { scenario: 'entrada null', entry: null },
-    { scenario: 'entrada em array', entry: [] },
-    { scenario: "entrada em texto 'granted'", entry: 'granted' },
+    { scenario: 'null entry', entry: null },
+    { scenario: 'entry in an array', entry: [] },
+    { scenario: "entry in the text 'granted'", entry: 'granted' },
     {
-      scenario: 'entrada com outro protótipo',
+      scenario: 'entry with another prototype',
       entry: withPrototype({ status: 'granted', decidedAt: START }, {}),
     },
   ] as const;
 
   for (const { scenario, entry } of INVALID_ENTRIES) {
-    it(`entrada de ads com ${scenario}: só ads fica sem decisão`, () => {
+    it(`ads entry with ${scenario}: only ads has no decision`, () => {
       const { consent } = setup({ record: recordOf({ analytics: VALID_ANALYTICS, ads: entry }) });
 
       assert.deepStrictEqual(consent.getSnapshot().record.decisions, {
@@ -126,7 +127,7 @@ describe('entrada inválida é descartada sozinha', () => {
     });
   }
 
-  it('version com undefined no objeto lido equivale a version ausente', () => {
+  it('version with undefined in the read object is the same as a missing version', () => {
     const { consent } = setup({
       record: recordOf({ ads: { status: 'granted', version: undefined, decidedAt: START } }),
     });
@@ -134,7 +135,7 @@ describe('entrada inválida é descartada sozinha', () => {
     assert.deepStrictEqual(consent.getSnapshot().record.decisions, { ads: decisionOf('granted') });
   });
 
-  it('registro, decisions e entradas com protótipo nulo são objetos simples e são aceitos', () => {
+  it('record, decisions and entries with a null prototype are plain objects and are accepted', () => {
     const entry = withPrototype({ status: 'granted', decidedAt: START }, null);
     const record = withPrototype(
       { format: 1, decisions: withPrototype({ ads: entry }, null) },
@@ -147,8 +148,8 @@ describe('entrada inválida é descartada sozinha', () => {
   });
 });
 
-describe('registro como dado não confiável', () => {
-  it('campos extras na entrada são ignorados e não copiados', () => {
+describe('the record as untrusted data', () => {
+  it('extra fields in the entry are ignored and not copied', () => {
     const { consent } = setup({
       record: recordOf({ ads: { status: 'granted', decidedAt: START, userId: 'u-1' } }),
     });
@@ -156,7 +157,7 @@ describe('registro como dado não confiável', () => {
     assert.deepStrictEqual(consent.getSnapshot().record.decisions, { ads: decisionOf('granted') });
   });
 
-  it('campos extras na raiz são ignorados e não copiados', () => {
+  it('extra fields at the root are ignored and not copied', () => {
     const { consent } = setup({
       record: { format: 1, decisions: VALID_DECISIONS, userId: 'u-1' },
     });
@@ -164,7 +165,7 @@ describe('registro como dado não confiável', () => {
     assert.deepStrictEqual(consent.getSnapshot().record, recordOf(VALID_DECISIONS));
   });
 
-  it('ids desconhecidos em decisions são ignorados', () => {
+  it('unknown ids in decisions are ignored', () => {
     const { consent } = setup({
       record: recordOf({ typo: decisionOf('granted'), ads: decisionOf('granted') }),
     });
@@ -172,7 +173,7 @@ describe('registro como dado não confiável', () => {
     assert.deepStrictEqual(consent.getSnapshot().record.decisions, { ads: decisionOf('granted') });
   });
 
-  it('chave __proto__ em texto JSON é ignorada e nenhum protótipo é alterado', () => {
+  it('a __proto__ key in JSON text is ignored and no prototype is changed', () => {
     const record =
       '{"format":1,"decisions":{' +
       `"__proto__":{"status":"granted","decidedAt":${String(START)}},` +
@@ -184,65 +185,66 @@ describe('registro como dado não confiável', () => {
     assert.equal(Object.getPrototypeOf(decisions), Object.prototype);
   });
 
-  /** Hidrata a fixture com propriedades herdadas de `Object.prototype` e desfaz a poluição. */
+  /** Hydrates the fixture with properties inherited from `Object.prototype` and undoes the pollution. */
   function hydrateUnderPollution(
     pollution: Readonly<Record<string, unknown>>,
     record: unknown,
   ): ConsentManager<PurposeId> {
+    const { now } = createClock();
     return withObjectPollution(pollution, () =>
-      createConsentManager({ purposes: PURPOSES, record }),
+      createConsentManager({ purposes: PURPOSES, record, now }),
     );
   }
 
-  // Um campo herdado por vez, com os demais próprios e válidos: assim a leitura de cada campo é
-  // verificada sozinha, sem que outro campo ausente mantenha a entrada ou a raiz inválida.
+  // One inherited field at a time, with the others own and valid: the read of each field is
+  // checked alone, without another missing field keeping the entry or the root invalid.
   const POLLUTIONS = [
     {
-      scenario: 'format herdado não completa a raiz',
+      scenario: 'an inherited format does not complete the root',
       pollution: { format: 1 },
       record: { decisions: VALID_DECISIONS },
     },
     {
-      scenario: 'decisions herdado não completa a raiz',
+      scenario: 'an inherited decisions does not complete the root',
       pollution: { decisions: VALID_DECISIONS },
       record: { format: 1 },
     },
     {
-      scenario: 'entrada herdada não completa decisions',
+      scenario: 'an inherited entry does not complete decisions',
       pollution: { ads: decisionOf('granted') },
       record: recordOf({}),
     },
     {
-      scenario: 'status herdado não completa a entrada',
+      scenario: 'an inherited status does not complete the entry',
       pollution: { status: 'granted' },
       record: recordOf({ ads: { decidedAt: START } }),
     },
     {
-      scenario: 'decidedAt herdado não completa a entrada',
+      scenario: 'an inherited decidedAt does not complete the entry',
       pollution: { decidedAt: START },
       record: recordOf({ ads: { status: 'granted' } }),
     },
     {
-      scenario: 'status e decidedAt herdados não completam entradas',
+      scenario: 'inherited status and decidedAt do not complete entries',
       pollution: { status: 'granted', decidedAt: START },
       record: recordOf({ ads: {}, analytics: { status: 'granted', version: '2026-10' } }),
     },
     {
-      scenario: 'format e decisions herdados não completam a raiz',
+      scenario: 'inherited format and decisions do not complete the root',
       pollution: { format: 1, decisions: VALID_DECISIONS },
       record: {},
     },
   ] as const;
 
   for (const { scenario, pollution, record } of POLLUTIONS) {
-    it(`Object.prototype poluído: ${scenario}`, () => {
+    it(`polluted Object.prototype: ${scenario}`, () => {
       const consent = hydrateUnderPollution(pollution, record);
 
       assert.deepStrictEqual(consent.getSnapshot().record, EMPTY_RECORD);
     });
   }
 
-  it('Object.prototype poluído com version: decisão salva sem versão continua desatualizada', () => {
+  it('Object.prototype polluted with version: a decision saved without version stays outdated', () => {
     const consent = hydrateUnderPollution(
       { version: '2026-10' },
       recordOf({ analytics: decisionOf('granted') }),
@@ -253,7 +255,7 @@ describe('registro como dado não confiável', () => {
     assert.deepStrictEqual([status.analytics, outdated.analytics], ['pending', true]);
   });
 
-  it('Array.prototype poluído com uma decisão: restore de conteúdo inválido equivale a registro vazio', () => {
+  it('Array.prototype polluted with a decision: restore of invalid content is an empty record', () => {
     const { consent } = setup();
 
     withArrayPollution(decisionOf('granted'), () => {
@@ -265,7 +267,7 @@ describe('registro como dado não confiável', () => {
 
   const FOREIGN_SOURCE = `({ format: 1, decisions: { ads: { status: 'granted', decidedAt: ${String(START)} } } })`;
 
-  it('objeto criado em outro realm não é objeto simples: registro vazio', () => {
+  it('an object created in another realm is not a plain object: empty record', () => {
     const foreign: unknown = runInNewContext(FOREIGN_SOURCE);
 
     const { consent } = setup({ record: foreign });
@@ -273,7 +275,7 @@ describe('registro como dado não confiável', () => {
     assert.deepStrictEqual(consent.getSnapshot().record, EMPTY_RECORD);
   });
 
-  it('o mesmo conteúdo de outro realm, em texto JSON, é aceito', () => {
+  it('the same content from another realm, as JSON text, is accepted', () => {
     const foreign: unknown = runInNewContext(FOREIGN_SOURCE);
 
     const { consent } = setup({ record: JSON.stringify(foreign) });
@@ -281,7 +283,7 @@ describe('registro como dado não confiável', () => {
     assert.equal(consent.getSnapshot().status.ads, 'granted');
   });
 
-  it('registro com estrutura válida editado pelo titular é aceito', () => {
+  it('a record with a valid structure edited by the data subject is accepted', () => {
     const edited = serialized({ ads: decisionOf('denied') }).replace('"denied"', '"granted"');
 
     const { consent } = setup({ record: edited });
@@ -289,34 +291,21 @@ describe('registro como dado não confiável', () => {
     assert.equal(consent.getSnapshot().status.ads, 'granted');
   });
 
-  it('decidedAt no futuro é aceito', () => {
+  it('a decidedAt after the clock is discarded, because its age cannot be established', () => {
     const future = START + 10 * 365 * 24 * 60 * 60 * 1_000;
 
     const { consent } = setup({
       record: recordOf({ ads: decisionOf('granted', { decidedAt: future }) }),
     });
 
-    assert.deepStrictEqual(consent.getSnapshot().record.decisions, {
-      ads: decisionOf('granted', { decidedAt: future }),
-    });
-  });
-
-  it('getter de options.record que lança: a criação não lança e o registro é vazio', () => {
-    const consent = createConsentManager({
-      purposes: PURPOSES,
-      get record(): unknown {
-        throw new Error('registro indisponível');
-      },
-    });
-
     assert.deepStrictEqual(consent.getSnapshot().record, EMPTY_RECORD);
   });
 });
 
-describe('getter que lança ou proxy hostil resultam em registro vazio, sem erro', () => {
-  const HOSTILE = new Error('registro hostil');
+describe('a throwing getter or a hostile proxy results in an empty record, without error', () => {
+  const HOSTILE = new Error('hostile record');
 
-  /** Proxy que lança em qualquer inspeção. */
+  /** Proxy that throws on any inspection. */
   function hostileProxy(): object {
     const fail = (): never => {
       throw HOSTILE;
@@ -328,9 +317,9 @@ describe('getter que lança ou proxy hostil resultam em registro vazio, sem erro
   }
 
   const HOSTILE_RECORDS = [
-    { scenario: 'proxy que lança em qualquer inspeção', record: hostileProxy() },
+    { scenario: 'a proxy that throws on any inspection', record: hostileProxy() },
     {
-      scenario: 'getter de format que lança',
+      scenario: 'a format getter that throws',
       record: {
         get format() {
           throw HOSTILE;
@@ -339,7 +328,7 @@ describe('getter que lança ou proxy hostil resultam em registro vazio, sem erro
       },
     },
     {
-      scenario: 'getter de decisions que lança',
+      scenario: 'a decisions getter that throws',
       record: {
         format: 1,
         get decisions() {
@@ -347,9 +336,9 @@ describe('getter que lança ou proxy hostil resultam em registro vazio, sem erro
         },
       },
     },
-    { scenario: 'decisions em proxy hostil', record: { format: 1, decisions: hostileProxy() } },
+    { scenario: 'decisions in a hostile proxy', record: { format: 1, decisions: hostileProxy() } },
     {
-      scenario: 'getter de uma entrada que lança, mesmo com outra entrada válida',
+      scenario: 'a getter of an entry that throws, even with another valid entry',
       record: {
         format: 1,
         decisions: {
@@ -361,7 +350,7 @@ describe('getter que lança ou proxy hostil resultam em registro vazio, sem erro
       },
     },
     {
-      scenario: 'getter de status que lança, mesmo com outra entrada válida',
+      scenario: 'a status getter that throws, even with another valid entry',
       record: {
         format: 1,
         decisions: {
@@ -378,13 +367,13 @@ describe('getter que lança ou proxy hostil resultam em registro vazio, sem erro
   ] as const;
 
   for (const { scenario, record } of HOSTILE_RECORDS) {
-    it(`hidratação com ${scenario}: registro vazio, sem lançar`, () => {
+    it(`hydration with ${scenario}: empty record, without throwing`, () => {
       const { consent } = setup({ record });
 
       assert.deepStrictEqual(consent.getSnapshot().record, EMPTY_RECORD);
     });
 
-    it(`restore com ${scenario}: registro vazio, sem lançar`, () => {
+    it(`restore with ${scenario}: empty record, without throwing`, () => {
       const { consent } = setup({ record: recordOf(VALID_DECISIONS) });
 
       consent.restore(record);
@@ -394,22 +383,22 @@ describe('getter que lança ou proxy hostil resultam em registro vazio, sem erro
   }
 });
 
-describe('snapshot inicial é o de servidor quando a hidratação não produz decisão válida', () => {
+describe('the initial snapshot is the server one when hydration produces no current decision', () => {
   const NO_VALID_DECISION = [
-    { scenario: 'sem registro', record: undefined },
-    { scenario: 'registro inválido', record: '{"format":1,' },
+    { scenario: 'without a record', record: undefined },
+    { scenario: 'an invalid record', record: '{"format":1,' },
     {
-      scenario: 'registro só com ids desconhecidos',
+      scenario: 'a record with only unknown ids',
       record: recordOf({ typo: decisionOf('granted') }),
     },
     {
-      scenario: 'registro só com entradas inválidas',
+      scenario: 'a record with only invalid entries',
       record: recordOf({ ads: { status: 'granted' } }),
     },
   ] as const;
 
   for (const { scenario, record } of NO_VALID_DECISION) {
-    it(`${scenario}: getSnapshot devolve o próprio objeto de getServerSnapshot`, () => {
+    it(`${scenario}: getSnapshot returns the very object of getServerSnapshot`, () => {
       const { consent } = setup({ record });
 
       assert.equal(consent.getSnapshot(), consent.getServerSnapshot());
@@ -417,18 +406,23 @@ describe('snapshot inicial é o de servidor quando a hidratação não produz de
   }
 });
 
-describe('ida e volta e serialização determinística', () => {
-  it('instante -0 do relógio é gravado como 0, e a ida e volta pelo JSON é exata', () => {
-    const consent = createConsentManager({ purposes: { ads: {} }, now: () => -0 });
+describe('round trip and deterministic serialization', () => {
+  it('the instant -0 of the clock is written as 0, and the JSON round trip is exact', () => {
+    const now = (): number => -0;
+    const consent = createConsentManager({ purposes: { ads: {} }, now });
     consent.decide({ ads: 'granted' });
     const { record } = consent.getSnapshot();
 
-    const copy = createConsentManager({ purposes: { ads: {} }, record: JSON.stringify(record) });
+    const copy = createConsentManager({
+      purposes: { ads: {} },
+      record: JSON.stringify(record),
+      now,
+    });
 
     assert.deepStrictEqual(copy.getSnapshot().record, record);
   });
 
-  it('JSON.stringify do registro produz o texto exato, com as decisões na ordem da configuração', () => {
+  it('JSON.stringify of the record produces the exact text, with the decisions in configuration order', () => {
     const { consent } = setup();
 
     consent.decide({ ads: 'denied', analytics: 'granted' });
@@ -436,7 +430,7 @@ describe('ida e volta e serialização determinística', () => {
     assert.equal(JSON.stringify(consent.getSnapshot().record), SERIALIZED_RECORD);
   });
 
-  it('registro hidratado com chaves em outra ordem é serializado na ordem canônica', () => {
+  it('a record hydrated with keys in another order is serialized in the canonical order', () => {
     const { consent } = setup({
       record: {
         decisions: {
@@ -450,15 +444,12 @@ describe('ida e volta e serialização determinística', () => {
     assert.equal(JSON.stringify(consent.getSnapshot().record), SERIALIZED_RECORD);
   });
 
-  it('outra instância com a mesma configuração e o registro em JSON tem snapshot igual', () => {
+  it('another instance with the same configuration and the record as JSON has an equal snapshot', () => {
     const { consent } = setup();
     consent.decide({ analytics: 'granted', health: 'denied' });
     const snapshot = consent.getSnapshot();
 
-    const copy = createConsentManager({
-      purposes: PURPOSES,
-      record: JSON.stringify(snapshot.record),
-    });
+    const copy = setup({ record: JSON.stringify(snapshot.record) }).consent;
 
     assert.deepStrictEqual(copy.getSnapshot(), snapshot);
   });

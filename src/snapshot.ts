@@ -2,7 +2,7 @@ import type { Model } from './config.ts';
 import type { ConsentDecision, ConsentRecord, ConsentSnapshot, ConsentStatus } from './index.ts';
 import { versionOf, type Decisions } from './record.ts';
 
-/** Snapshot de servidor: todas as finalidades `'pending'`, sem `outdated` e sem decisões. */
+/** Server snapshot: every purpose `'pending'`, nothing `outdated` and no decisions. */
 export function buildServerSnapshot(ids: readonly string[]): ConsentSnapshot {
   const status: Record<string, ConsentStatus> = {};
   const outdated: Record<string, boolean> = {};
@@ -19,9 +19,9 @@ export function buildServerSnapshot(ids: readonly string[]): ConsentSnapshot {
 }
 
 /**
- * Snapshot congelado das decisões. Reaproveita de `previous` o `status` e o `outdated` quando
- * nenhum valor mudou; `record` e `record.decisions` são sempre novos. As decisões entram por
- * referência, de modo que a decisão inalterada mantém a sua.
+ * Frozen snapshot of the decisions. Reuses `status` and `outdated` from `previous` when no value
+ * changed; `record` and `record.decisions` are always new. Decisions are kept by reference, so an
+ * unchanged decision keeps its own.
  */
 export function buildSnapshot(
   model: Model,
@@ -41,7 +41,7 @@ export function buildSnapshot(
     let stale = false;
     if (decision !== undefined) {
       recorded[id] = decision;
-      // Decisão registrada sob outra versão não é vigente: vale 'pending' e fica sinalizada.
+      // A decision recorded under another version is not current: 'pending', and flagged.
       if (versionOf(decision) === versions[index]) current = decision.status;
       else stale = true;
     }

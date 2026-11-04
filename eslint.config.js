@@ -2,6 +2,8 @@ import js from '@eslint/js';
 import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
+import boundaries from './eslint.boundaries.js';
+
 export default defineConfig([
   { ignores: ['dist/', 'coverage/'] },
   js.configs.recommended,
@@ -18,6 +20,7 @@ export default defineConfig([
       'no-eval': 'error',
     },
   },
+  ...boundaries,
   {
     files: ['test/**/*.ts'],
     rules: {

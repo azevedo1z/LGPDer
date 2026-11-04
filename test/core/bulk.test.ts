@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { createConsentManager } from '../src/index.ts';
-import { decisionOf, recordOf } from './support/records.ts';
-import { PURPOSES, START, callUntyped, createUntyped, setup } from './support/setup.ts';
+import { createConsentManager } from '../../src/index.ts';
+import { decisionOf, recordOf } from '../support/records.ts';
+import { PURPOSES, START, callUntyped, createUntyped, setup } from '../support/setup.ts';
 
 describe('grantAll', () => {
-  it('concede só as finalidades sem individualGrant: health continua pending', () => {
+  it('grants only the purposes without individualGrant: health stays pending', () => {
     const { consent } = setup();
 
     consent.grantAll();
@@ -18,7 +18,7 @@ describe('grantAll', () => {
     });
   });
 
-  it('grava uma decisão por finalidade elegível, todas com o mesmo decidedAt', () => {
+  it('records one decision per eligible purpose, all with the same decidedAt', () => {
     let tick = START;
     const consent = createConsentManager({ purposes: PURPOSES, now: () => tick++ });
 
@@ -30,7 +30,7 @@ describe('grantAll', () => {
     });
   });
 
-  it('produz uma única notificação de origem decision com as finalidades gravadas', () => {
+  it('produces a single notification with source decision and the written purposes', () => {
     const { consent, changes } = setup();
 
     consent.grantAll();
@@ -41,7 +41,7 @@ describe('grantAll', () => {
     );
   });
 
-  it('individualGrant: false informado explicitamente mantém a finalidade elegível', () => {
+  it('individualGrant: false given explicitly keeps the purpose eligible', () => {
     const { consent } = setup({ purposes: { ads: { individualGrant: false } } });
 
     consent.grantAll();
@@ -49,7 +49,7 @@ describe('grantAll', () => {
     assert.equal(consent.getSnapshot().status.ads, 'granted');
   });
 
-  it('grava só as finalidades elegíveis cuja situação muda', () => {
+  it('writes only the eligible purposes whose status changes', () => {
     const { consent, changes } = setup({
       record: recordOf({
         analytics: decisionOf('granted', { version: '2026-10' }),
@@ -65,7 +65,7 @@ describe('grantAll', () => {
     );
   });
 
-  it('a segunda chamada seguida é no-op: mesmo snapshot e relógio não chamado de novo', () => {
+  it('the second call in a row is a no-op: same snapshot and the clock is not called again', () => {
     const { consent, clock } = setup();
     consent.grantAll();
     const after = consent.getSnapshot();
@@ -76,7 +76,7 @@ describe('grantAll', () => {
     assert.equal(clock.calls(), 1);
   });
 
-  it('com todas as finalidades marcadas individualGrant, é no-op', () => {
+  it('with every purpose marked individualGrant, it is a no-op', () => {
     const { consent, clock } = setup({
       purposes: { health: { individualGrant: true }, kids: { individualGrant: true } },
     });
@@ -88,7 +88,7 @@ describe('grantAll', () => {
     assert.equal(clock.calls(), 0);
   });
 
-  it('argumentos são ignorados: não concedem health', () => {
+  it('arguments are ignored: they do not grant health', () => {
     const { consent } = setup();
 
     callUntyped(consent.grantAll, { health: 'granted' });
@@ -100,7 +100,7 @@ describe('grantAll', () => {
     });
   });
 
-  it('relógio inválido: TypeError e nada é alterado', () => {
+  it('invalid clock: TypeError and nothing changes', () => {
     const consent = createUntyped({ purposes: PURPOSES, now: () => 1.5 });
     const before = consent.getSnapshot();
 
@@ -113,7 +113,7 @@ describe('grantAll', () => {
 });
 
 describe('denyAll', () => {
-  it('recusa todas as finalidades, inclusive health, marcada com individualGrant', () => {
+  it('refuses every purpose, including health, marked with individualGrant', () => {
     const { consent } = setup();
 
     consent.denyAll();
@@ -125,7 +125,7 @@ describe('denyAll', () => {
     });
   });
 
-  it('finalidades pending passam a ter recusa registrada, com o mesmo decidedAt', () => {
+  it('pending purposes get a recorded refusal, with the same decidedAt', () => {
     let tick = START;
     const consent = createConsentManager({ purposes: PURPOSES, now: () => tick++ });
 
@@ -138,7 +138,7 @@ describe('denyAll', () => {
     });
   });
 
-  it('revoga as finalidades concedidas com novo decidedAt', () => {
+  it('revokes the granted purposes with a new decidedAt', () => {
     const { consent, clock } = setup();
     consent.grantAll();
     clock.advance(60_000);
@@ -152,7 +152,7 @@ describe('denyAll', () => {
     });
   });
 
-  it('produz uma única notificação de origem decision com as finalidades gravadas', () => {
+  it('produces a single notification with source decision and the written purposes', () => {
     const { consent, changes } = setup({ record: recordOf({ ads: decisionOf('denied') }) });
 
     consent.denyAll();
@@ -163,7 +163,7 @@ describe('denyAll', () => {
     );
   });
 
-  it('a segunda chamada seguida é no-op: mesmo snapshot e relógio não chamado de novo', () => {
+  it('the second call in a row is a no-op: same snapshot and the clock is not called again', () => {
     const { consent, clock } = setup();
     consent.denyAll();
     const after = consent.getSnapshot();
@@ -174,7 +174,7 @@ describe('denyAll', () => {
     assert.equal(clock.calls(), 1);
   });
 
-  it('recusa as finalidades individualGrant, que grantAll não alcança', () => {
+  it('refuses the individualGrant purposes, which grantAll does not reach', () => {
     const { consent } = setup({
       purposes: { health: { individualGrant: true }, kids: { individualGrant: true } },
     });
@@ -184,7 +184,7 @@ describe('denyAll', () => {
     assert.deepStrictEqual(consent.getSnapshot().status, { health: 'denied', kids: 'denied' });
   });
 
-  it('argumentos são ignorados: não concedem ads', () => {
+  it('arguments are ignored: they do not grant ads', () => {
     const { consent } = setup();
 
     callUntyped(consent.denyAll, { ads: 'granted' });
@@ -196,7 +196,7 @@ describe('denyAll', () => {
     });
   });
 
-  it('relógio inválido: TypeError e nada é alterado', () => {
+  it('invalid clock: TypeError and nothing changes', () => {
     const consent = createUntyped({ purposes: PURPOSES, now: () => 1.5 });
     const before = consent.getSnapshot();
 

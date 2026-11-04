@@ -1,4 +1,4 @@
-/** Builders de registros no formato `format: 1`. */
+/** Builders of records in the `format: 1` shape. */
 import type { ConsentDecision, DecidedStatus } from 'lgpder';
 
 import { START } from './setup.ts';
@@ -8,7 +8,7 @@ export interface DecisionFields {
   readonly decidedAt?: number | undefined;
 }
 
-/** Decisão válida, com os campos na ordem `status`, `version`, `decidedAt`. */
+/** Valid decision, with the fields in the order `status`, `version`, `decidedAt`. */
 export function decisionOf(
   status: DecidedStatus,
   { version, decidedAt = START }: DecisionFields = {},
@@ -16,12 +16,12 @@ export function decisionOf(
   return version === undefined ? { status, decidedAt } : { status, version, decidedAt };
 }
 
-/** Registro `{ format: 1, decisions }` com as entradas informadas, válidas ou não. */
+/** Record `{ format: 1, decisions }` with the given entries, valid or not. */
 export function recordOf(decisions: Readonly<Record<string, unknown>>) {
   return { format: 1, decisions } as const;
 }
 
-/** Texto JSON do registro, como a aplicação o grava. */
+/** JSON text of the record, as the application writes it. */
 export function serialized(decisions: Readonly<Record<string, unknown>>): string {
   return JSON.stringify(recordOf(decisions));
 }
