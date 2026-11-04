@@ -27,5 +27,5 @@
       "lgpder/*": ["./src/*/index.ts"]
     }
   },
-  "include": ["src", "test", "examples"]
+  "include": ["src", "test"]
 }

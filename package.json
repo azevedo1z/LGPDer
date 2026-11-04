@@ -18,6 +18,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./storage": {
+      "types": "./dist/storage/index.d.ts",
+      "default": "./dist/storage/index.js"
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.js",
@@ -46,7 +50,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test --test-timeout=30000 --experimental-test-coverage --test-coverage-include=\"src/**\" --test-coverage-include=\"examples/**\" --test-coverage-lines=90 --test-coverage-branches=90 --test-coverage-functions=90 \"test/{core,tooling,storage,scripts,google,evidence,ui,init}/*.test.ts\"",
+    "test": "node --test --test-timeout=30000 --experimental-test-coverage --test-coverage-include=\"src/**\" --test-coverage-lines=90 --test-coverage-branches=90 --test-coverage-functions=90 \"test/{core,tooling,storage,scripts,google,evidence,ui,init}/*.test.ts\"",
     "test:package": "npm run build && publint --strict && attw --pack . --profile esm-only && tsc -p test/consumer/tsconfig.dist.json && node --test \"test/consumer/*.test.ts\"",
     "size": "npm run build && size-limit",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run test:package && npm run size",
@@ -57,8 +61,10 @@
     "@arethetypeswrong/cli": "^0.18.5",
     "@eslint/js": "^10.0.1",
     "@size-limit/preset-small-lib": "^14.3.0",
+    "@types/jsdom": "^28.0.3",
     "@types/node": "^24.19.2",
     "eslint": "^10.14.0",
+    "jsdom": "^29.1.1",
     "prettier": "3.9.10",
     "publint": "^0.3.25",
     "size-limit": "^14.3.0",

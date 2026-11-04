@@ -2,7 +2,7 @@
 
 O núcleo não lê nem grava armazenamento. A entrada é `options.record` (hidratação, na criação) e `restore()`; a saída é `snapshot.record` e as notificações. Assim ele funciona com qualquer armazenamento, é seguro em SSR e não grava por padrão em um mecanismo enviado automaticamente ao servidor, como o cookie, sem escolha explícita da aplicação. As funções do gerenciador estão na [referência da API](api.md).
 
-A receita oficial de persistência, `examples/consent-store.ts`, é código da aplicação: é testada no repositório do LGPDer, reproduzida abaixo e não faz parte do código do pacote publicado.
+A receita abaixo foi promovida a código do pacote: use `connectStorage` de `lgpder/storage`, que mantém as garantias dela e acrescenta a sincronização entre abas, os adaptadores de `localStorage` e de cookie e a remoção do registro salvo sem decisões. A receita fica aqui só como referência até a reescrita deste guia e deixou de ser testada no repositório.
 
 ## Receita (`consent-store.ts`)
 

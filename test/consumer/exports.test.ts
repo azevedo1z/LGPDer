@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { createConsentManager } from 'lgpder';
+import { connectStorage } from 'lgpder/storage';
 
 /** 2026-10-31T12:00:00.000Z. */
 const INSTANT = 1_793_448_000_000;
@@ -39,5 +40,28 @@ describe('compiled package, imported by the name lgpder', () => {
     });
 
     assert.equal(consent.getSnapshot().status.ads, 'pending');
+  });
+});
+
+describe('compiled package, imported by the name lgpder/storage', () => {
+  it('the runtime exports are connectStorage, cookieAdapter and localStorageAdapter', async () => {
+    const exported = await import('lgpder/storage');
+
+    assert.deepStrictEqual(Object.keys(exported), [
+      'connectStorage',
+      'cookieAdapter',
+      'localStorageAdapter',
+    ]);
+  });
+
+  it('on the server, without document, connects in memory and decides', () => {
+    const consent = createConsentManager({ purposes: { ads: {} }, now: () => INSTANT });
+    const storage = connectStorage(consent);
+
+    storage.decide({ ads: 'granted' });
+
+    assert.equal(consent.getSnapshot().status.ads, 'granted');
+    assert.equal(storage.isPersisted(), false);
+    storage.destroy();
   });
 });

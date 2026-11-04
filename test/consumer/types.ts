@@ -1,8 +1,17 @@
 /**
- * Type tests compiled against the published `dist/index.d.ts`, with the TypeScript version of the
- * repository. They repeat a representative subset of `test/types.check.ts`.
+ * Type tests compiled against the published `.d.ts` files, with the TypeScript version of the
+ * repository and without the DOM types (`lib: ["es2022"]`): the core and lgpder/storage must not
+ * require them from the consumer. They repeat a representative subset of `test/types.check.ts` and
+ * `test/storage/types.check.ts`.
  */
 import { createConsentManager, type ConsentManager, type ConsentSnapshot } from 'lgpder';
+import {
+  connectStorage,
+  cookieAdapter,
+  localStorageAdapter,
+  type ConsentStorage,
+  type StorageAdapter,
+} from 'lgpder/storage';
 
 /* eslint-disable @typescript-eslint/no-unnecessary-type-parameters -- T is the very mechanism of the exact type comparison */
 type Equal<A, B> =
@@ -45,3 +54,14 @@ export const state = useSyncExternalStore(
   consent.getServerSnapshot,
 );
 export type SyncExternalStoreSnapshot = Expect<Equal<typeof state, ConsentSnapshot<Id>>>;
+
+// lgpder/storage: P inferred from the manager, and the built-in adapters are storages.
+const storage = connectStorage(consent, { storage: 'cookie', key: 'consent', crossTab: true });
+export type StorageInference = Expect<Equal<typeof storage, ConsentStorage<Id>>>;
+export const adapters: readonly StorageAdapter[] = [
+  localStorageAdapter({ key: 'consent' }),
+  cookieAdapter({ maxAge: consent.maxAge }),
+];
+
+// @ts-expect-error unknown id in the decide of the storage
+storage.decide({ typo: 'granted' });
