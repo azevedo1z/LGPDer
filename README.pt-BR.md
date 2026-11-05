@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="docs/logo.svg" width="30%" alt="LGPDer">
+  <img src="docs/logo.svg" width="96" alt="LGPDer">
 </h1>
 
 <p align="center">
