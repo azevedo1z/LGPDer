@@ -26,7 +26,7 @@ const consent = createConsentManager({
 });
 type Id = 'analytics' | 'ads';
 
-// The handle, with destroy only.
+// The handle, with destroy and withdraw.
 export const google = connectGoogle(consent, {
   purposes: {
     analytics: { integrations: ['google-analytics'] },
@@ -36,6 +36,7 @@ export const google = connectGoogle(consent, {
 });
 export type Handle = Expect<Equal<typeof google, ConsentGoogle>>;
 export type Destroy = Expect<Equal<ConsentGoogle['destroy'], () => void>>;
+export type Withdraw = Expect<Equal<ConsentGoogle['withdraw'], () => void>>;
 
 // The built-in integrations are the ones of the scripts layer (D41).
 export type Integrations = Expect<Equal<Integration, 'google-analytics' | 'google-ads'>>;

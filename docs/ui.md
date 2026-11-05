@@ -60,7 +60,8 @@ Outside the browser (no `document`), the options are validated and the handle do
 - Shown while some purpose **without** `individualGrant` is `'pending'` and the center is closed: the first visit, an expired decision, a new version of a purpose (`outdated`) and a storage failure. On a new version, the banner opens again in full, with every purpose; a data subject who clicks "Rejeitar todas" to close it also refuses the purposes that did not change, a risk accepted by the specification.
 - A non-modal region labelled by its title, with the description, the list of the purposes "Aceitar todas" reaches (every purpose without `individualGrant`, in configuration order), and three buttons in this order: "Aceitar todas" (`actions.grantAll()`), "Rejeitar todas" (`actions.denyAll()`) and "Personalizar" (opens the center). The three have the **same visual emphasis**, as the ANPD recommends: same part, same style.
 - Purposes with `individualGrant` never open the banner: "Aceitar todas" would not reach them, and asking for them on every page after it would be a nuisance. Ask for them in the center or [in context](#asking-for-a-purpose-in-context).
-- While it is shown, the `scroll-padding-bottom` of the root element is the height of the banner, read again on each render and on `resize`, so the focus is never hidden behind it (WCAG 2.4.11); the previous inline value is restored when it hides.
+- Never taller than the viewport: past that height (a large zoom, a small screen), its content scrolls inside it, so the title and the description stay reachable (WCAG 1.4.4 and 1.4.10).
+- While it is shown, the `scroll-padding-bottom` of the root element is the height of the banner, at most the height of the window, read again on each render and on `resize`, so the focus is never hidden behind it (WCAG 2.4.11); the previous inline value is restored when it hides.
 
 ### Preferences center
 
@@ -310,16 +311,16 @@ The components target WCAG 2.2 AA:
 - the center traps the focus while open (`Tab` and `Shift+Tab` wrap around its controls, also after a click on its text or on the backdrop, and a focus moved to the page behind by a script comes back), `Esc` closes it, and the focus goes back where it was when it opened, or to the floating button when that element is gone or hidden; it is never left on a hidden element;
 - roles and names: the banner is a labelled region, the center a dialog with `aria-modal`, each switch has `role="switch"`, `aria-checked` and the title of its purpose as its name, the floating button has an accessible name;
 - default theme: text contrast from 6.39:1 to 15.8:1, focus outline and switches at 3:1 or more, buttons and switches at least 24 by 24 CSS pixels;
-- the focus is never hidden by the banner (`scroll-padding-bottom`), and the components declare their language.
+- the banner scrolls inside the viewport instead of growing past it, the focus is never hidden by the banner (`scroll-padding-bottom`), and the components declare their language.
 
-The test suite runs axe-core on each component (banner, full center with categories, the necessary section and `individualGrant`, flat center, floating button, placeholder) with the WCAG 2.0, 2.1 and 2.2 A and AA rules and the best practices, without violations. Two rules are checked by other means, because the test DOM (jsdom) has no layout: the contrast is computed from the default style sheet, and **`target-size` is not checked by axe**: the minimum size of the targets is checked on the CSS. An automated check does not replace a test with assistive technology on the real page.
+The test suite runs axe-core on each component (banner, full center with categories, the necessary section and `individualGrant`, flat center, floating button, placeholder) with the WCAG 2.0, 2.1 and 2.2 A and AA rules and the best practices, without violations. Two rules are checked by other means, because the test DOM (jsdom) has no layout: the contrast is computed from the default style sheet, and **`target-size` is not checked by axe**: the minimum size of the targets and the height limit of the banner are checked on the CSS. An automated check does not replace a test with assistive technology on the real page.
 
 ## Content Security Policy
 
 Each component has a `<style>` element in its shadow root, which a policy without `'unsafe-inline'` in `style-src` blocks unless it allows its hash. The hash of the style sheet of this version is:
 
 ```text
-'sha256-zp0R4fe/rx3ILIcobq7FTJhmCL5Yg7tqYFBZS2WN++0='
+'sha256-4ydU48/z3O6bG7Uy7CrY8iBC4yxZjQd3PBxuXb7XpV4='
 ```
 
 It changes whenever the style sheet changes; the [CHANGELOG](../CHANGELOG.md) says when. The components set no nonce on it. The sizes of the placeholder and the `scroll-padding-bottom` of the root are set through the CSSOM (`style.setProperty`), which CSP does not restrict.

@@ -23,7 +23,7 @@ describe('connectGoogle without document', () => {
     assert.equal(typeof window, 'undefined');
   });
 
-  it('connects, follows decisions and destroys without throwing or creating globals', () => {
+  it('connects, follows decisions, destroys and withdraws without throwing or creating globals', () => {
     const { consent } = setup({ record: serialized({ ads: decisionOf('granted') }) });
 
     assert.doesNotThrow(() => {
@@ -31,6 +31,7 @@ describe('connectGoogle without document', () => {
       consent.decide({ ads: 'denied' });
       google.destroy();
       google.destroy();
+      google.withdraw();
     });
     assert.equal(Reflect.has(globalThis, 'dataLayer'), false);
     assert.equal(Reflect.has(globalThis, 'gtag'), false);

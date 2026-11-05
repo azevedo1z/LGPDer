@@ -5,7 +5,8 @@
  * The configuration of each purpose takes, together, the keys of the core, its texts, its
  * integrations, its cookies and its Consent Mode types; `init` hands each part to its layer. Every
  * layer validates its options before any effect, and a layer that refuses them undoes the ones
- * already connected, so a failed `init` leaves nothing on the page.
+ * already connected, so a failed `init` leaves no component, listener, activated script or Consent
+ * Mode grant on the page.
  *
  * @packageDocumentation
  */
@@ -18,7 +19,7 @@ import {
   type PurposeConfig,
 } from '../index.ts';
 import { connectEvidence, type EvidenceOptions } from '../evidence/index.ts';
-import { connectGoogle, type GooglePurposeOptions } from '../google/index.ts';
+import { connectGoogle, type ConsentGoogle, type GooglePurposeOptions } from '../google/index.ts';
 import {
   connectScripts,
   type ConsentScripts,
@@ -297,7 +298,8 @@ function splitOptions(options: unknown): SplitOptions {
  * maps a consent type; the evidence, connected only with `endpoint`, `onDecision` or `onError`; the
  * components; and the blocking of scripts, the only effect that cannot be undone. A layer that
  * refuses its options throws before any effect of its own, and the layers already connected are
- * disconnected before the error is rethrown.
+ * disconnected before the error is rethrown; the google layer then sends every Consent Mode type
+ * denied.
  *
  * The decisions go through the storage: the components call its actions, the reload of a
  * revocation happens only when the storage confirms the record saved, and the returned app exposes
@@ -343,6 +345,7 @@ export function init(options: unknown): ConsentApp {
   if (inBrowser) live = instance;
   // Destroy functions of the layers connected so far, in creation order.
   const created: (() => void)[] = [];
+  let google: ConsentGoogle | undefined;
   const destroy = (): void => {
     for (const destroyLayer of created.splice(0).reverse()) destroyLayer();
     if (live === instance) live = undefined;
@@ -353,9 +356,8 @@ export function init(options: unknown): ConsentApp {
     const storage = connectStorage(manager, { storage: layers.storage, key: RECORD_KEY });
     created.push(storage.destroy);
     if (mapped) {
-      created.push(
-        connectGoogle(manager, { purposes: googlePurposes, debug: layers.debug }).destroy,
-      );
+      google = connectGoogle(manager, { purposes: googlePurposes, debug: layers.debug });
+      created.push(google.destroy);
     }
     if (endpoint !== undefined || onDecision !== undefined || onError !== undefined) {
       created.push(connectEvidence(manager, { endpoint, onDecision, onError }).destroy);
@@ -395,6 +397,9 @@ export function init(options: unknown): ConsentApp {
     });
   } catch (error) {
     destroy();
+    // The update sent on connection may grant types of the saved record, and nothing on the page
+    // follows the decisions anymore: a revocation in another tab would never retract it.
+    google?.withdraw();
     throw error;
   }
 }

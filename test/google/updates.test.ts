@@ -1,6 +1,7 @@
 /**
  * When the layer sends `gtag('consent', 'update', ...)`: on connection and on every notification,
- * always from the current state of the manager, and never after `destroy`.
+ * always from the current state of the manager, and never after `destroy`; `withdraw` sends every
+ * type denied.
  */
 import assert from 'node:assert/strict';
 import { afterEach, describe, it } from 'node:test';
@@ -12,6 +13,7 @@ import {
   closeGoogles,
   connectGoogleTo,
   consentWith,
+  lastUpdate,
   openGoogle,
   queued,
   updates,
@@ -152,13 +154,61 @@ describe('destroy', () => {
     assert.equal(updates().length, 1);
   });
 
-  it('the handle is frozen, with destroy only', () => {
+  it('the handle is frozen, with destroy and withdraw', () => {
     const { google } = openGoogle(OPTIONS);
 
     assert.ok(Object.isFrozen(google));
-    assert.deepStrictEqual(Object.keys(google), ['destroy']);
+    assert.deepStrictEqual(Object.keys(google), ['destroy', 'withdraw']);
     assert.throws(() => {
       assignUntyped(google, 'destroy', () => undefined);
     }, TypeError);
+  });
+});
+
+describe('withdraw', () => {
+  const GRANTED = {
+    record: serialized({
+      analytics: decisionOf('granted', { version: '2026-10' }),
+      ads: decisionOf('granted'),
+    }),
+  };
+
+  it('sends every type denied, whatever the manager grants', () => {
+    const { google } = openGoogle(OPTIONS, GRANTED);
+
+    google.withdraw();
+
+    assert.deepStrictEqual(updates(), [
+      consentWith('analytics_storage', ...AD_TYPES),
+      consentWith(),
+    ]);
+  });
+
+  it('stops following the manager, as destroy does', () => {
+    const { consent, google } = openGoogle(OPTIONS);
+
+    google.withdraw();
+    consent.decide({ ads: 'granted' });
+
+    assert.deepStrictEqual(updates(), [consentWith(), consentWith()]);
+  });
+
+  it('sends the update on each call, also after destroy', () => {
+    const { google } = openGoogle(OPTIONS, GRANTED);
+
+    google.destroy();
+    google.withdraw();
+    google.withdraw();
+
+    assert.deepStrictEqual(updates().slice(1), [consentWith(), consentWith()]);
+  });
+
+  it('does not depend on this', () => {
+    const { google } = openGoogle(OPTIONS, GRANTED);
+    const { withdraw } = google;
+
+    withdraw();
+
+    assert.deepStrictEqual(lastUpdate(), consentWith());
   });
 });

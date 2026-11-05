@@ -544,7 +544,7 @@ describe('a layer that refuses its options leaves nothing behind', () => {
     },
   ];
   for (const { layer, options, error } of cases) {
-    it(`when ${layer} throws: no component, listener or activated script`, (t) => {
+    it(`when ${layer} throws: no component, listener, activated script or Consent Mode grant`, (t) => {
       const listeners = trackListeners(t);
       document.body.innerHTML = GTAG_SCRIPT;
       saveAnalyticsGranted();
@@ -554,9 +554,22 @@ describe('a layer that refuses its options leaves nothing behind', () => {
       assert.deepStrictEqual(components(), []);
       assert.deepStrictEqual(listeners(), []);
       assert.equal(blockedScripts().length, 1);
+      // A layer refused before the google layer connected leaves no update at all.
+      assert.deepStrictEqual(lastUpdate() ?? consentWith(), consentWith());
       assert.doesNotThrow(() => startExample(), 'the page is free for another init');
     });
   }
+
+  it('a grant the google layer already sent is followed by every type denied', () => {
+    saveAnalyticsGranted();
+
+    assert.throws(
+      () => initUntyped({ purposes: PURPOSES, endpoint: 'http://evil.example/' }),
+      TypeError,
+    );
+
+    assert.deepStrictEqual(updates(), [consentWith('analytics_storage'), consentWith()]);
+  });
 
   it('while the document is loading, nothing is left to run on DOMContentLoaded', (t) => {
     const listeners = trackListeners(t);

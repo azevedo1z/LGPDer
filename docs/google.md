@@ -91,6 +91,7 @@ export declare function connectGoogle<P extends string>(
 
 export interface ConsentGoogle {
   readonly destroy: () => void;
+  readonly withdraw: () => void;
 }
 ```
 
@@ -101,7 +102,7 @@ Commands go through `window.gtag` when it is a function, and otherwise are queue
 Connect it before the [scripts layer](scripts.md), so that the update reaches the `dataLayer` before the tag a grant activates, and before the cleanup of a revocation; `init` does so.
 
 - Parameters: `consent`, the manager whose purposes control the consent types; `options` ([`GoogleOptions<P>`](#googleoptions)), required.
-- Returns: frozen handle; `destroy()` stops following the manager, without sending anything. Idempotent.
+- Returns: frozen handle, whose functions do not depend on `this`. `destroy()` stops following the manager, without sending anything. Idempotent. `withdraw()` stops following it too, and sends an update with every type `'denied'`, whatever the manager grants, so that no grant already sent outlives the layer: use it when nothing on the page will follow the decisions anymore, such as when a setup that connected the layer fails. Each call sends the update; outside the browser, it does nothing.
 - Errors: `TypeError` for invalid options and `RangeError` for a purpose that is not configured, validated before any effect, in this order: options, unknown keys, `purposes` (each purpose: configured, `undefined` or an object with known keys, `integrations`, `consentMode`), `debug`. The messages are in [Errors and warnings](#errors-and-warnings).
 
 Outside the browser (no `document`), the options are validated and the handle does nothing.

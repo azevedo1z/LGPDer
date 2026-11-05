@@ -282,6 +282,15 @@ describe('the scroll padding of the root element, so the banner never covers the
     assert.equal(scrollPadding(), '120px');
   });
 
+  it('is capped at the height of the window, when the banner is taller than it', () => {
+    openUi();
+    stubBannerHeight(testDom.window.innerHeight + 200);
+
+    testDom.window.dispatchEvent(new testDom.window.Event('resize'));
+
+    assert.equal(scrollPadding(), `${String(testDom.window.innerHeight)}px`);
+  });
+
   it('on resize, only the height is read again: nothing else is rendered', () => {
     let previews = 0;
     const { ui } = openUi({

@@ -52,10 +52,17 @@ export interface GoogleOptions<P extends string = string> {
 
 /* eslint-enable @typescript-eslint/consistent-indexed-object-style */
 
-/** Handle of the google layer. Frozen object; `destroy` does not depend on `this`. */
+/** Handle of the google layer. Frozen object; the functions do not depend on `this`. */
 export interface ConsentGoogle {
   /** Stops following the manager, without sending anything. Idempotent. */
   readonly destroy: () => void;
+  /**
+   * Stops following the manager, as `destroy` does, and sends `gtag('consent', 'update', ...)`
+   * with every type denied, so that no grant already sent outlives the layer: for when nothing on
+   * the page will follow the decisions anymore, such as a setup that failed after connecting it.
+   * Each call sends the update.
+   */
+  readonly withdraw: () => void;
 }
 
 /** Value of a consent type in a command. */
@@ -343,9 +350,10 @@ export function connectGoogle<P extends string>(
 ): ConsentGoogle;
 export function connectGoogle(consent: ConsentManager, options: unknown): ConsentGoogle {
   const { controllers, warn } = parseOptions(consent, options);
+  const inBrowser = typeof document !== 'undefined';
   let unsubscribe: (() => void) | undefined;
 
-  if (typeof document !== 'undefined') {
+  if (inBrowser) {
     if (!hasConsentDefault()) {
       warn(
         '[lgpder] No consent default was found in the dataLayer; it was pushed now. Run consentDefaultSnippet in the <head>, before the Google tag.',
@@ -366,10 +374,17 @@ export function connectGoogle(consent: ConsentManager, options: unknown): Consen
     if (consent.getSnapshot() !== first) update();
   }
 
+  const destroy = (): void => {
+    unsubscribe?.();
+    unsubscribe = undefined;
+  };
+
   return Object.freeze({
-    destroy: (): void => {
-      unsubscribe?.();
-      unsubscribe = undefined;
+    destroy,
+    withdraw: (): void => {
+      destroy();
+      // With no purpose granted, every type is denied.
+      if (inBrowser) send('update', consentParams(controllers, {}));
     },
   });
 }

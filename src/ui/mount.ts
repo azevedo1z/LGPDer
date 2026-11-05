@@ -101,7 +101,9 @@ function createController(
     const { style } = document.documentElement;
     if (visible) {
       padding ??= [style.getPropertyValue(PADDING), style.getPropertyPriority(PADDING)];
-      style.setProperty(PADDING, `${String(banner.offsetHeight)}px`);
+      // Capped at the viewport: without `dvh`, the banner may still be taller than the window.
+      const height = Math.min(banner.offsetHeight, window.innerHeight);
+      style.setProperty(PADDING, `${String(height)}px`);
     } else if (padding !== undefined) {
       style.setProperty(PADDING, ...padding);
       padding = undefined;

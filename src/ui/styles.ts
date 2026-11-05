@@ -4,7 +4,8 @@
  * property is read once, in `:host`, into a private `--_*` property with its default.
  *
  * Default theme: text contrast of at least 4.5:1 and focus outline of at least 3:1 against its
- * background; every button and switch at least 24 by 24 CSS pixels (WCAG 2.2 AA).
+ * background; every button and switch at least 24 by 24 CSS pixels; the banner scrolls inside the
+ * viewport instead of growing past it (WCAG 2.2 AA).
  */
 export const STYLES: string = [
   ':host{',
@@ -33,7 +34,11 @@ export const STYLES: string = [
   '[part~=banner],[part~=dialog],[part~=placeholder]{display:grid;gap:12px;padding:16px;',
   'border:1px solid var(--_bd);border-radius:var(--_ra);background:var(--_bg);color:var(--_tx);',
   'box-shadow:var(--lgpder-shadow,0 4px 24px rgba(0,0,0,.2))}',
-  '[part~=banner]{max-width:960px;margin:0 auto}',
+  // Never taller than the viewport, less the padding of the host: a fixed element does not scroll
+  // with the page, so the top of a taller banner (zoom, small screen) could not be reached. The
+  // `vh` line is the fallback of the browsers without `dvh`.
+  '[part~=banner]{max-width:960px;max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);',
+  'margin:0 auto;overflow:auto}',
   '[part~=backdrop]{position:absolute;inset:0;display:grid;place-items:center;padding:16px;',
   'background:rgba(0,0,0,.5)}',
   '[part~=dialog]{width:100%;max-width:640px;max-height:100%;overflow:auto}',
