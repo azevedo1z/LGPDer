@@ -37,6 +37,7 @@ Each purpose declares the Consent Mode types it controls, directly (`consentMode
 The seven types (`ad_storage`, `ad_user_data`, `ad_personalization`, `analytics_storage`, `functionality_storage`, `personalization_storage`, `security_storage`) are always sent. A type is `'granted'` only when some purpose controls it and **every** purpose that controls it is granted; the types no purpose controls stay `'denied'`.
 
 ```ts
+const consent = createConsentManager({ purposes: { analytics: {}, ads: {}, remarketing: {} } });
 connectGoogle(consent, {
   purposes: {
     analytics: { integrations: ['google-analytics'] },

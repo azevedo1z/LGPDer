@@ -82,6 +82,7 @@ Shown while the banner and the center are hidden, unless `floatingButton: false`
 `openPreferences()` opens the full center. `openPreferences(['healthReminders'])` opens the center with only the listed purposes, in configuration order and without repetition, without the section of the necessary cookies: the way to ask for a decision on a purpose with `individualGrant` where the feature that needs it is used.
 
 ```ts
+// With a manager that configures healthReminders: { individualGrant: true }.
 document.querySelector('#enable-reminders')?.addEventListener('click', () => {
   ui.openPreferences(['healthReminders']);
 });
@@ -111,6 +112,7 @@ Creates the renderer of the placeholders, to pass as `renderPlaceholder` to [`co
 import { connectScripts } from 'lgpder/scripts';
 import { createPlaceholder } from 'lgpder/ui';
 
+// With a manager that configures the videos purpose.
 connectScripts(consent, {
   renderPlaceholder: createPlaceholder(consent, {
     actions: storage,
