@@ -85,7 +85,7 @@ For maintainers. The [CHANGELOG](CHANGELOG.md) is the only place where release n
    git push --follow-tags
    ```
 
-3. The push of the tag runs the [release workflow](.github/workflows/release.yml): it checks that the tag matches `package.json`, publishes to npm with provenance and creates the GitHub Release with the section of the CHANGELOG for that version.
+3. The push of the tag runs the [release workflow](.github/workflows/release.yml): it checks that the tag matches `package.json`, publishes to npm through trusted publishing (OIDC, with no token and with provenance) and creates the GitHub Release with the section of the CHANGELOG for that version.
 
 ## License
 
