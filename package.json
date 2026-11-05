@@ -1,6 +1,6 @@
 {
   "name": "lgpder",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Lightweight, typed, per-purpose consent manager for web applications, with the Brazilian LGPD as reference. Does not guarantee legal compliance.",
   "license": "MIT",
   "keywords": [

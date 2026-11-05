@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-05
+
+Documentation only: no change to the code or to the API.
+
+### Changed
+
+- **Documentation.** New logo in the READMEs.
+
+### Fixed
+
+- **Documentation.** Corrected statements that went beyond the code: the accessibility checks (the contrast and the target sizes are checked on the style sheet, not by axe-core), the reload on revocation (also for `onGranted` code without a cleanup), the time stored in the record (rounded to the day only by default), the cleanup of `Partitioned` cookies (a limit of the library, not of the page), the cookie pattern syntax and the scope of the `debug` warning about Google tags. Added a note that LGPDer is not affiliated with Google, and stated in `docs/lgpd.md` that it is not legal advice.
+
 ## [0.1.0] - 2026-11-05
 
 Initial release: a consent manager for the Brazilian LGPD, published as one ESM package with optional subpaths. See the [README](README.md) for the quick start and the guides in `docs/` for the full reference.
@@ -23,5 +35,6 @@ Initial release: a consent manager for the Brazilian LGPD, published as one ESM 
 
 - Strict Content Security Policies are supported. The CSP hash of `consentDefaultSnippet` is `'sha256-bwiEGrWus2Rs6F3b0yuALxS0J1DFbgWl4lLMtYRMl7E='`, and the hash of the style sheet of the components is `'sha256-4ydU48/z3O6bG7Uy7CrY8iBC4yxZjQd3PBxuXb7XpV4='`. Both change only in a release that says so in this file.
 
-[Unreleased]: https://github.com/azevedo1z/LGPDer/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/azevedo1z/LGPDer/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/azevedo1z/LGPDer/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/azevedo1z/LGPDer/releases/tag/v0.1.0

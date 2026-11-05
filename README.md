@@ -50,7 +50,7 @@
 
 Brazilian websites that use analytics or advertising need the consent of the data subject before setting cookies or loading trackers. In practice, many cookie banners are only decorative: the Google tag loads before any click, "reject" is hidden behind a second screen, there is no way to revoke later, and a revocation changes a flag while the tracker keeps running on the page.
 
-Doing it properly by hand means solving the same problems every time: recording one decision per purpose, persisting it, keeping tabs in sync, blocking scripts and iframes until there is consent, telling the Google Consent Mode, deleting cookies on revocation, and building an accessible interface. Commercial consent platforms solve this, but they add a third-party script, a dashboard and data sent to someone else.
+Doing it properly by hand means solving the same problems every time: recording one decision per purpose, persisting it, keeping tabs in sync, blocking scripts and iframes until there is consent, telling the Google Consent Mode, deleting cookies on revocation, and building an accessible interface. Commercial consent platforms solve this, but they usually add a third-party script, a dashboard and data sent to someone else.
 
 LGPDer solves it inside the application, as an npm package, with no backend and no telemetry.
 
@@ -64,7 +64,7 @@ LGPDer solves it inside the application, as an npm package, with no backend and 
 - **Expiry and re-consent.** Decisions expire after 365 days by default, and a new version of a purpose asks again.
 - **Evidence of consent.** An optional hook and an endpoint of the application itself that receives each decision; the precise time comes from the backend, and no identifier is generated in the browser.
 - **Headless core.** A 2.3 kB core with typed state, atomic decisions and notifications, compatible with React's `useSyncExternalStore`, for teams that build their own interface.
-- **Accessibility.** WCAG 2.2 AA: keyboard navigation, focus trapped in the open dialog, `Esc` to close, ARIA roles and labels, contrast of the default theme, checked with axe-core in the tests.
+- **Accessibility.** Designed for WCAG 2.2 AA: keyboard navigation, focus trapped in the open dialog, `Esc` to close, ARIA roles and labels, and the contrast of the default theme. The tests run axe-core on each component and check the contrast and the target sizes on the style sheet; there are no tests in real browsers or with assistive technology yet (see [known limitations](#known-limitations)).
 
 ## How it works
 
@@ -77,7 +77,7 @@ revocation  →  saved  →  iframes removed, cleanups run, cookies deleted, Con
 1. `init` creates the core, connects the storage and adopts the saved record. Restoring is never a decision of the data subject.
 2. While some purpose is undecided, expired or under a new version, the banner shows.
 3. Each click records one decision per purpose. The storage saves it, the Google layer sends the Consent Mode update, and the scripts layer activates the blocked elements whose purposes are all granted.
-4. On a revocation, here or in another tab, the scripts layer undoes what it can, deletes the cookies of the purpose and reloads the page when a script it activated is still running.
+4. On a revocation, here or in another tab, the scripts layer undoes what it can, deletes the cookies of the purpose and reloads the page when code it cannot stop is still running: a script it activated, or an `onGranted` function that returned no cleanup.
 
 ## Use cases
 
@@ -281,7 +281,7 @@ These hold in every layer and win over any convenience:
 
 ## Privacy and security
 
-- The record holds only, per purpose, the decision, the version and the day of the decision. No identifier, IP address, user agent or displayed text.
+- The record holds only, per purpose, the decision, the version and the time of the decision, rounded to the start of the UTC day by default. No identifier, IP address, user agent or displayed text.
 - Saved data is untrusted: it is validated strictly, never throws, and whatever is invalid becomes the absence of a decision. Options are read only as own properties, so a polluted prototype cannot grant consent.
 - No `eval`, `new Function` or dynamic `import()`; texts are inserted as text, never as HTML. Strict Content Security Policies are supported (see the [CSP notes](docs/init.md#content-security-policy)).
 - The browser storage can be read or changed by any script of the same origin: protect the application against XSS.
@@ -316,7 +316,7 @@ These reflect the current version and are good candidates for contributions:
 - **Brazilian Portuguese only in the interface.** Every text can be replaced, but no other language is bundled.
 - **No CDN build or `<script>` tag usage.** Install from npm and bundle it.
 - **No framework bindings.** React, Vue and Next.js use the core directly, as the [recipes](docs/ssr-react.md) show.
-- **Cookie cleanup limits.** `HttpOnly`, `Partitioned`, other-path and other-domain cookies cannot be deleted from the page.
+- **Cookie cleanup limits.** `HttpOnly`, other-path and other-domain cookies cannot be deleted from the page, and the library does not delete `Partitioned` cookies.
 
 ## Project status
 
@@ -336,6 +336,8 @@ LGPDer is a technical library to record, read, change and revoke consent decisio
 - deciding, as a legal matter, whether to use the advanced mode of the Google Consent Mode.
 
 This notice is informative and is not legal advice. The guide [O LGPDer e a LGPD](docs/lgpd.md), in Portuguese, relates the library to the law topic by topic, telling apart legal obligations, good practices of the ANPD and technical decisions of the library.
+
+LGPDer is not affiliated with, sponsored or endorsed by Google. Google, Google Analytics, Google Ads and Google Tag Manager are trademarks of Google LLC.
 
 ## Documentation
 

@@ -1,6 +1,6 @@
 # O LGPDer e a LGPD
 
-O LGPDer não garante conformidade com a LGPD: leia antes o [aviso no README](../README.pt-BR.md#aviso-legal). Este documento relaciona o LGPDer com a LGPD, separando obrigação legal (com o dispositivo), boa prática (com a fonte) e decisão técnica da biblioteca. Nenhuma escolha de implementação do LGPDer é exigida pela LGPD em si; o comportamento de cada uma está nos guias, em inglês: o [núcleo](api.md), o [armazenamento](storage.md), os [scripts e a revogação](scripts.md), o [Google Consent Mode](google.md), a [prova do consentimento](evidence.md), os [componentes](ui.md) e a [entrada única](init.md).
+O LGPDer não garante conformidade com a LGPD: leia antes o [aviso no README](../README.pt-BR.md#aviso-legal). Este documento é informativo e não constitui parecer nem consultoria jurídica. Ele relaciona o LGPDer com a LGPD, separando obrigação legal (com o dispositivo), boa prática (com a fonte) e decisão técnica da biblioteca. Nenhuma escolha de implementação do LGPDer é exigida pela LGPD em si; o comportamento de cada uma está nos guias, em inglês: o [núcleo](api.md), o [armazenamento](storage.md), os [scripts e a revogação](scripts.md), o [Google Consent Mode](google.md), a [prova do consentimento](evidence.md), os [componentes](ui.md) e a [entrada única](init.md).
 
 As decisões técnicas abaixo valem para o pacote inteiro. Quando dependem de uma camada, a camada é indicada: `lgpder/ui` (banner, central de preferências, botão flutuante e placeholder), `lgpder/scripts` (bloqueio, revogação e limpeza de cookies), `lgpder/storage` (persistência e sincronização entre abas), `lgpder/google` (Google Consent Mode v2) e `lgpder/evidence` (envio das decisões ao backend da aplicação). Quem usa só o núcleo (modo headless) assume na própria interface o que a `ui` e a `scripts` fariam.
 
@@ -47,7 +47,7 @@ Dispositivos sem indicação de norma são da LGPD; os de outra lei indicam a le
 ### Alteração de informações ou de finalidade (versionamento e reconsentimento)
 
 - **Obrigação legal:** Quando mudam as informações dos incisos I, II, III ou V do art. 9º, o controlador deve informar o titular, com destaque, sobre o teor das alterações, e o titular pode revogar o consentimento se discordar (art. 8º, § 6º). Mudança de finalidade incompatível com o consentimento original deve ser informada previamente ao titular, que pode revogá-lo (art. 9º, § 2º).
-- **Boa prática:** Obter novo consentimento quando mudam as premissas (Guia de Cookies, p. 18).
+- **Boa prática:** Quando mudam as premissas, obter novo consentimento ou usar outra hipótese legal (Guia de Cookies, p. 18).
 - **Decisão técnica do LGPDer:** Versão opcional por finalidade; decisão registrada sob outra versão vale `'pending'` e é sinalizada em `outdated`, sem ser revogação. Na mudança de versão, o banner da `ui` reabre completo. A biblioteca não julga se uma mudança é compatível: tratar a decisão anterior como pendente é a opção conservadora, e a aplicação decide quando mudar a versão.
 
 Mudar a versão não substitui o dever de informar. A lei não determina que o consentimento anterior caduque: se a aplicação apenas informar o titular, sem mudar a versão, o LGPDer continua tratando as decisões como concedidas. Mude a versão somente quando a alteração exigir nova manifestação do titular, para evitar pedidos repetidos.
@@ -151,7 +151,7 @@ O LGPDer ajuda a aplicação a registrar, consultar, alterar e revogar decisões
 
 ## Fontes
 
-Consultadas em 31/10/2026:
+Consultadas em 05/11/2026:
 
 - Lei nº 13.709/2018 (LGPD), texto compilado: <https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm>
 - ANPD, Guia Orientativo: Cookies e Proteção de Dados Pessoais, versão 1.0, outubro de 2022: <https://www.gov.br/anpd/pt-br/documentos-e-publicacoes/guia-orientativo-cookies-e-protecao-de-dados-pessoais.pdf>

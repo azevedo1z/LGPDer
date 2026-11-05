@@ -227,11 +227,11 @@ When a purpose stops being granted, and on connection for every purpose that is 
 | `'google-analytics'` | `_ga`, `_ga_*`, `_gid`, `_gat`, `_gat_*`, `_gac_*` |
 | `'google-ads'`       | `_gcl_*`                                           |
 
-A pattern is a cookie name (an HTTP token) optionally followed by one `*`, which matches any suffix: `'my_tracker_*'`. A lone `'*'` is refused, since it would also remove the consent record and the session of the application; with `storage: 'cookie'`, `init` also refuses a pattern that matches the cookie `lgpder` of the record. The name written in the removal is always the real name read from `document.cookie`.
+A pattern is a cookie name (an HTTP token without `*`) optionally followed by one `*`, which matches any suffix: `'my_tracker_*'`. A lone `'*'` is refused, since it would also remove the consent record and the session of the application; with `storage: 'cookie'`, `init` also refuses a pattern that matches the cookie `lgpder` of the record. The name written in the removal is always the real name read from `document.cookie`.
 
 Each matching cookie is expired with `Path=/` on the current host (host-only) and on each parent domain (`www.example.com.br`, `example.com.br`, `com.br`; the browser ignores the public suffixes), because integrations such as Google Analytics write on the registrable domain. On HTTPS, the removal carries `Secure`, which the `__Secure-` and `__Host-` names require. For an IP address or a hostname without a dot, only the host-only cookie.
 
-Limits, which no script of the page can overcome:
+Limits of the removal:
 
 - `HttpOnly` cookies are invisible to `document.cookie`; the server that set them must expire them.
 - Cookies set with a `Path` other than `/` are not reached, since a removal must name the same path.
