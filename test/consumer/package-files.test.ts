@@ -7,6 +7,16 @@ import { fileURLToPath } from 'node:url';
 /** Root of the repository, where `npm pack` runs. */
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
+/**
+ * Every guide of `docs/`, all published with the package; which guides exist is checked by the test
+ * of the documentation.
+ */
+function guides(): readonly string[] {
+  return readdirSync(new URL('../../docs/', import.meta.url))
+    .filter((name) => name.endsWith('.md'))
+    .map((name) => `docs/${name}`);
+}
+
 interface PackResult {
   readonly files: readonly { readonly path: string }[];
 }
@@ -45,8 +55,15 @@ describe('files of the published package', () => {
     );
   });
 
-  it('publishes the license, the readme, the changelog and the guides', () => {
-    const required = ['LICENSE', 'README.md', 'CHANGELOG.md', 'package.json', 'docs/api.md'];
+  it('publishes the license, the readmes, the changelog and the guides', () => {
+    const required = [
+      'LICENSE',
+      'README.md',
+      'README.pt-BR.md',
+      'CHANGELOG.md',
+      'package.json',
+      ...guides(),
+    ];
 
     assert.deepStrictEqual(
       required.filter((file) => !packed.has(file)),

@@ -116,6 +116,15 @@ function rejectUnknownKeys(own: Readonly<Record<string, unknown>>, keys: readonl
 }
 
 /**
+ * `value` as quoted text for an error message: a primitive as `String` writes it, and an object or
+ * a function as its type, so that no code of the application (`toString`) runs.
+ */
+function describeItem(value: unknown): string {
+  const isObject = (typeof value === 'object' && value !== null) || typeof value === 'function';
+  return JSON.stringify(isObject ? typeof value : String(value));
+}
+
+/**
  * A text shown in a component. An empty one would leave a button or a switch without an accessible
  * name.
  *
@@ -262,10 +271,12 @@ export function parsePurposeList(
   if (!Array.isArray(value) || value.length === 0) {
     throw new TypeError('[lgpder] "purposes" must be a non-empty array.');
   }
-  // Unlike `map`, `Array.from` visits the holes of a sparse array, which are then refused.
-  const asked = Array.from(value as unknown[], (id) => {
+  // Every index is visited and read only as an own property: a hole of a sparse array is refused,
+  // never filled with a value planted on a polluted prototype.
+  const asked = Array.from({ length: value.length }, (_, index) => {
+    const id: unknown = Object.hasOwn(value, index) ? value[index] : undefined;
     if (typeof id !== 'string' || !Object.hasOwn(consent.purposes, id)) {
-      throw new RangeError(`[lgpder] Unknown purpose: ${JSON.stringify(String(id))}.`);
+      throw new RangeError(`[lgpder] Unknown purpose: ${describeItem(id)}.`);
     }
     return id;
   });

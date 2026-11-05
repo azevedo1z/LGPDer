@@ -50,6 +50,7 @@
     "dist/**/*.js",
     "dist/**/*.d.ts",
     "docs/*.md",
+    "README.pt-BR.md",
     "CHANGELOG.md"
   ],
   "sideEffects": false,

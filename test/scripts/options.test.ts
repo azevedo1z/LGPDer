@@ -17,7 +17,14 @@ import {
   type Page,
 } from '../support/page.ts';
 import { decisionOf, serialized } from '../support/records.ts';
-import { callUntyped, setup, withObjectPollution, withPrototype } from '../support/setup.ts';
+import {
+  callUntyped,
+  OPAQUE_ITEMS,
+  setup,
+  withArrayPollution,
+  withObjectPollution,
+  withPrototype,
+} from '../support/setup.ts';
 
 afterEach(() => {
   closePages();
@@ -205,6 +212,31 @@ describe('invalid options', () => {
   }
 });
 
+describe('list items that are not primitives (D112)', () => {
+  for (const { case: label, value, quoted } of OPAQUE_ITEMS) {
+    it(`${label} as an integration is described by its type`, () => {
+      assert.throws(
+        () => {
+          connectUntyped({ purposes: { ads: { integrations: [value] } } });
+        },
+        { name: 'TypeError', message: `[lgpder] Unknown integration: ${quoted}.` },
+      );
+    });
+
+    it(`${label} as a cookie pattern is described by its type`, () => {
+      assert.throws(
+        () => {
+          connectUntyped({ purposes: { ads: { cookies: [value] } } });
+        },
+        {
+          name: 'TypeError',
+          message: `[lgpder] Invalid cookie pattern: ${quoted}; use a cookie name, optionally ending in "*".`,
+        },
+      );
+    });
+  }
+});
+
 describe('valid options', () => {
   it('accepts no options, an empty object and undefined values', () => {
     for (const options of [
@@ -334,6 +366,36 @@ describe('inherited options are never read', () => {
 
     assert.deepStrictEqual(cookieNames(), ['kept']);
   });
+
+  const HOLES = [
+    {
+      option: 'integrations',
+      planted: 'google-ads',
+      message: '[lgpder] Unknown integration: "undefined".',
+    },
+    {
+      option: 'cookies',
+      planted: '_gcl_au',
+      message:
+        '[lgpder] Invalid cookie pattern: "undefined"; use a cookie name, optionally ending in "*".',
+    },
+  ] as const;
+
+  for (const { option, planted, message } of HOLES) {
+    it(`a hole of ${option} is refused, never filled from a polluted Array.prototype`, () => {
+      const { consent } = setup();
+      const options = { purposes: { ads: { [option]: withHole(planted) } } };
+
+      assert.throws(
+        () => {
+          withArrayPollution(planted, () => {
+            callUntyped(connectScripts, consent, options);
+          });
+        },
+        { name: 'TypeError', message },
+      );
+    });
+  }
 
   it('an inherited renderPlaceholder is never called', () => {
     render('<iframe data-consent="health" data-src="https://video.example/"></iframe>');

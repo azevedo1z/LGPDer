@@ -3,6 +3,8 @@
  * expired on the current host and on each parent domain.
  */
 
+import { describeItem } from './describe.ts';
+
 /**
  * Cookie pattern: a cookie name (an HTTP token, RFC 9110, section 5.6.2) without `*`, optionally
  * followed by one `*` that matches any suffix. A lone `*` is refused: it would also remove the
@@ -24,7 +26,7 @@ export type CookieMatcher = (name: string) => boolean;
 export function parsePattern(pattern: unknown): string {
   if (typeof pattern !== 'string' || !PATTERN.test(pattern)) {
     throw new TypeError(
-      `[lgpder] Invalid cookie pattern: ${JSON.stringify(String(pattern))}; use a cookie name, optionally ending in "*".`,
+      `[lgpder] Invalid cookie pattern: ${describeItem(pattern)}; use a cookie name, optionally ending in "*".`,
     );
   }
   return pattern;

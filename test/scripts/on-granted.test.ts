@@ -8,7 +8,7 @@ import { captureMicrotasks } from '../support/capture.ts';
 import { testDom } from '../support/dom.ts';
 import { closePages, openPage } from '../support/page.ts';
 import { decisionOf, serialized } from '../support/records.ts';
-import { callUntyped, type PurposeId } from '../support/setup.ts';
+import { callUntyped, OPAQUE_ITEMS, type PurposeId } from '../support/setup.ts';
 
 afterEach(() => {
   closePages();
@@ -240,6 +240,17 @@ describe('errors', () => {
       });
     }
   });
+
+  for (const { case: label, value, quoted } of OPAQUE_ITEMS) {
+    it(`${label} as the purpose is a RangeError that describes it by its type`, () => {
+      const { scripts } = openPage();
+
+      assert.throws(() => callUntyped(scripts.onGranted, value, () => undefined), {
+        name: 'RangeError',
+        message: `[lgpder] Unknown purpose: ${quoted}.`,
+      });
+    });
+  }
 
   it('a fn that is not a function is a TypeError', () => {
     const { scripts } = openPage();

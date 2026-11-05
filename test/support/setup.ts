@@ -122,6 +122,32 @@ export function withPrototype(value: object, prototype: object | null): unknown 
   return value;
 }
 
+/** A value that is not a primitive, and how an error message quotes it. */
+export interface OpaqueItem {
+  readonly case: string;
+  readonly value: unknown;
+  /** The type of the value as JSON, the only thing a message may say about it. */
+  readonly quoted: '"object"' | '"function"';
+}
+
+/**
+ * Values that are not primitives, as an untyped caller may pass them in a list or as an argument:
+ * an error message describes each by its type, without calling its code (D112).
+ */
+export const OPAQUE_ITEMS: readonly OpaqueItem[] = [
+  { case: 'a null-prototype object', value: Object.create(null), quoted: '"object"' },
+  {
+    case: 'an object whose toString throws',
+    value: {
+      toString: (): never => {
+        throw new Error('toString was called');
+      },
+    },
+    quoted: '"object"',
+  },
+  { case: 'a function', value: (): string => 'ads', quoted: '"function"' },
+];
+
 /**
  * Runs `act` with `Array.prototype` polluted by `value` at one numeric position per purpose of the
  * fixture, as a hostile script would, and undoes the pollution at the end.

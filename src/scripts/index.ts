@@ -28,6 +28,7 @@ import {
 } from './blocking.ts';
 import { COOKIES, detectIntegration, isIntegration } from './catalog.ts';
 import { cookieMatcher, deleteCookies, parsePattern, type CookieMatcher } from './cookies.ts';
+import { describeItem } from './describe.ts';
 
 /* eslint-disable @typescript-eslint/consistent-indexed-object-style -- the mapped type of
  * `ScriptsOptions.purposes` is the shape of the published API, as in the core. */
@@ -273,14 +274,17 @@ function assertOptionalFunction(value: unknown, name: string): void {
 function parseList<T>(value: unknown, name: string, parse: (item: unknown) => T): T[] {
   if (value === undefined) return [];
   if (!Array.isArray(value)) throw new TypeError(`[lgpder] "${name}" must be an array.`);
-  // Unlike `map`, `Array.from` visits the holes of a sparse array, which `parse` then refuses.
-  return Array.from(value, (item) => parse(item));
+  // Every index is visited and read only as an own property: a hole of a sparse array is refused
+  // by `parse`, never filled with a value planted on a polluted prototype.
+  return Array.from({ length: value.length }, (_, index) =>
+    parse(Object.hasOwn(value, index) ? value[index] : undefined),
+  );
 }
 
 /** @throws {TypeError} `value` is not a built-in integration. */
 function parseIntegration(value: unknown): Integration {
   if (!isIntegration(value)) {
-    throw new TypeError(`[lgpder] Unknown integration: ${JSON.stringify(String(value))}.`);
+    throw new TypeError(`[lgpder] Unknown integration: ${describeItem(value)}.`);
   }
   return value;
 }
@@ -758,7 +762,7 @@ export function connectScripts(consent: ConsentManager, options?: unknown): Cons
     onGranted: (purpose: unknown, fn: unknown): (() => void) => {
       assertAlive();
       if (typeof purpose !== 'string' || !isPurpose(purpose)) {
-        throw new RangeError(`[lgpder] Unknown purpose: ${JSON.stringify(String(purpose))}.`);
+        throw new RangeError(`[lgpder] Unknown purpose: ${describeItem(purpose)}.`);
       }
       if (typeof fn !== 'function') throw new TypeError('[lgpder] "fn" must be a function.');
       if (!inBrowser) return ignore;

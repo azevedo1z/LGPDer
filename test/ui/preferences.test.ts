@@ -9,7 +9,13 @@ import { connectScripts, type ConsentScripts } from '../../src/scripts/index.ts'
 import { captureMicrotasks } from '../support/capture.ts';
 import { testDom } from '../support/dom.ts';
 import { decisionOf, serialized } from '../support/records.ts';
-import { callUntyped, setup, type PurposeId } from '../support/setup.ts';
+import {
+  callUntyped,
+  OPAQUE_ITEMS,
+  setup,
+  withArrayPollution,
+  type PurposeId,
+} from '../support/setup.ts';
 import {
   categories,
   clickButton,
@@ -402,6 +408,36 @@ describe('openPreferences with a list of purposes (D54)', () => {
     }
     // eslint-disable-next-line no-sparse-arrays -- a hole, which an untyped caller may pass
     assert.throws(open([, 'ads']), RangeError);
+    assert.equal(isShown('lgpder-preferences'), false);
+  });
+
+  for (const { case: label, value, quoted } of OPAQUE_ITEMS) {
+    it(`rejects ${label} as an item, described by its type`, () => {
+      const { ui } = openUi();
+
+      assert.throws(
+        () => {
+          callUntyped(ui.openPreferences, [value]);
+        },
+        { name: 'RangeError', message: `[lgpder] Unknown purpose: ${quoted}.` },
+      );
+      assert.equal(isShown('lgpder-preferences'), false);
+    });
+  }
+
+  it('rejects a hole, never filled from a polluted Array.prototype', () => {
+    const { ui } = openUi();
+    const purposes: string[] = ['health'];
+    purposes.length = 2;
+
+    assert.throws(
+      () => {
+        withArrayPollution('ads', () => {
+          callUntyped(ui.openPreferences, purposes);
+        });
+      },
+      { name: 'RangeError', message: '[lgpder] Unknown purpose: "undefined".' },
+    );
     assert.equal(isShown('lgpder-preferences'), false);
   });
 });
