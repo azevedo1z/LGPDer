@@ -36,7 +36,7 @@ export function requestConsent(cookieHeader: string | null) {
 ```
 
 - **A repeated cookie adopts nothing.** A cookie named `lgpder` may appear more than once in the request, for example when another host of the same registrable domain also sets one with `Domain`. Which copy is the record cannot be told, so the server must not pick one: in the browser, the [cookie adapter](storage.md#cookieadapteroptions) refuses the duplicated name and every purpose stays `'pending'`, and the server must render the same state. Read the raw header, as above, and not a helper of the framework that returns only one of the copies (such as `cookies().get` of Next.js).
-- **What the core discards.** The core discards the expired decisions and whatever is malformed, and keeps a decision of another version `'pending'`, so an expired, outdated or malformed cookie never grants anything. A record with a valid structure is accepted even if the data subject or a script of the page edited it, as any record is (see the [notice](../README.md#notice-lgpder-does-not-guarantee-lgpd-compliance)).
+- **What the core discards.** The core discards the expired decisions and whatever is malformed, and keeps a decision of another version `'pending'`, so an expired, outdated or malformed cookie never grants anything. A record with a valid structure is accepted even if the data subject or a script of the page edited it, as any record is (see the [notice](../README.md#legal-notice)).
 
 The record is only in a cookie when the browser saves it there: use `storage: 'cookie'` (see [storage](storage.md#cookie)).
 

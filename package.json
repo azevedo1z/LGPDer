@@ -4,14 +4,27 @@
   "description": "Lightweight, typed, per-purpose consent manager for web applications, with the Brazilian LGPD as reference. Does not guarantee legal compliance.",
   "license": "MIT",
   "keywords": [
-    "consentimento",
-    "consent",
-    "privacidade",
-    "privacy",
-    "preferencias",
     "lgpd",
-    "typescript"
+    "consent",
+    "consent-management",
+    "cookie-consent",
+    "cookie-banner",
+    "google-consent-mode",
+    "privacy",
+    "web-components",
+    "typescript",
+    "consentimento",
+    "privacidade"
   ],
+  "homepage": "https://github.com/azevedo1z/lgpder#readme",
+  "bugs": {
+    "url": "https://github.com/azevedo1z/lgpder/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/azevedo1z/lgpder.git"
+  },
+  "author": "Gabriel Azevedo (https://github.com/azevedo1z)",
   "type": "module",
   "exports": {
     ".": {

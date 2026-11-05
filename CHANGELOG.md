@@ -1,6 +1,6 @@
 # Changelog
 
-Relevant changes of the `lgpder` package, per version, with the publication date and the list of changes. The version policy is in the [Versioning](README.md#versioning) section of the README.
+Relevant changes of the `lgpder` package, per version, with the publication date and the list of changes. The version policy is in the [Project status](README.md#project-status) section of the README.
 
 ## Unreleased
 
@@ -13,6 +13,7 @@ The headless core becomes a plug-and-play product: one package with optional sub
 - The published package includes every `.d.ts` of `dist`, the guides of `docs/`, `README.pt-BR.md` and this `CHANGELOG.md`.
 - Tooling: the check of the types with TypeScript 5.6 and 7 (`test:types-compat`) was removed; `publint` and `attw` remain; minimum coverage of 90%; size checked with `size-limit` (the core up to 3 kB and all the subpaths together up to 15 kB, gzipped); the direction of the dependencies between the core and the layers enforced by ESLint; CI on GitHub Actions with `npm run check`.
 - Error messages, comments and JSDoc in English, keeping the `[lgpder]` prefix.
+- Open source repository files: README in English and Brazilian Portuguese, `CONTRIBUTING.md`, `SECURITY.md`, issue and pull request templates, npm metadata (`repository`, `homepage`, `bugs`, `author`) and a release workflow that publishes to npm with provenance.
 
 ### Core (`lgpder`)
 

@@ -571,7 +571,7 @@ Examples:
 
 A plain object is a value whose `typeof` is `'object'`, other than `null`, whose prototype is `Object.prototype` or `null`. Arrays, `Map` instances and objects created in another realm are not plain objects.
 
-The messages must not be used for control flow; changes to them follow the [versioning of the package](../README.md#versioning).
+The messages must not be used for control flow; changes to them follow the [versioning of the package](../README.md#project-status).
 
 ### Listener errors
 

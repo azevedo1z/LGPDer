@@ -249,7 +249,7 @@ export function outdatedPurposes({ outdated }: ConsentSnapshot<PurposeId>): Purp
 
 ## Security
 
-- The storage of the browser can be read or changed by any script of the same origin: protect the application against XSS and assess the third-party scripts it loads. A record changed this way is valid for the core (see the [notice](../README.md#notice-lgpder-does-not-guarantee-lgpd-compliance)).
+- The storage of the browser can be read or changed by any script of the same origin: protect the application against XSS and assess the third-party scripts it loads. A record changed this way is valid for the core (see the [notice](../README.md#legal-notice)).
 - With the cookie, the record goes to the server on every request to the domain, and other hosts of the same registrable domain can set cookies visible to the page; prefer `__Host-` on sites served only over HTTPS.
 - The record holds only, per purpose, the decided status, the version and the instant of the decision, besides the `format` field. Depending on the context, for example when tied to an account, it may be personal data (LGPD, art. 5, I).
 

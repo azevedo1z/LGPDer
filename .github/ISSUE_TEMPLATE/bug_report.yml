@@ -1,0 +1,60 @@
+name: Bug report
+description: Report something that does not work as expected.
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. For security vulnerabilities, do not use this form; follow the [security policy](https://github.com/azevedo1z/lgpder/blob/main/SECURITY.md) instead.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened, and what did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: The init options (or the layers you connect) and the relevant HTML.
+      render: ts
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected subpath
+      options:
+        - lgpder (core)
+        - lgpder/storage
+        - lgpder/scripts
+        - lgpder/google
+        - lgpder/evidence
+        - lgpder/ui
+        - lgpder/init
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: LGPDer version
+      placeholder: '0.1.0'
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: 'Chrome 130'
+  - type: input
+    id: framework
+    attributes:
+      label: Bundler or framework
+      placeholder: 'Vite 8, Next.js 16'
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console output
+      description: Remove personal data before pasting.
+      render: shell

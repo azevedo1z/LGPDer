@@ -1,6 +1,6 @@
 # Evidence of consent (`lgpder/evidence`)
 
-Under the LGPD, the burden of proving that consent was obtained lawfully is on the controller (art. 8, § 2), and the records of LGPDer are not proof on their own (see the [notice](../README.md#notice-lgpder-does-not-guarantee-lgpd-compliance)): a record with a valid structure is accepted even if the data subject or a script of the page edited it. `lgpder/evidence` hands each decision of the data subject to the application, through a hook and, optionally, a `POST` to an endpoint of the application itself, so the backend can keep its own evidence. [`init`](init.md) connects it with `endpoint`, `onDecision` or `onError`.
+Under the LGPD, the burden of proving that consent was obtained lawfully is on the controller (art. 8, § 2), and the records of LGPDer are not proof on their own (see the [notice](../README.md#legal-notice)): a record with a valid structure is accepted even if the data subject or a script of the page edited it. `lgpder/evidence` hands each decision of the data subject to the application, through a hook and, optionally, a `POST` to an endpoint of the application itself, so the backend can keep its own evidence. [`init`](init.md) connects it with `endpoint`, `onDecision` or `onError`.
 
 ```ts
 import { createConsentManager } from 'lgpder';
