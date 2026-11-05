@@ -4,7 +4,7 @@ import { afterEach, describe, it } from 'node:test';
 
 import type { StorageOptions } from 'lgpder/storage';
 
-import { testDom } from '../support/dom.ts';
+import { fireStorageEvent, testDom, writeFromAnotherTab } from '../support/dom.ts';
 import { createMemoryAdapter } from '../support/memory-adapter.ts';
 import { decisionOf, serialized } from '../support/records.ts';
 import { closeTabs, nextBroadcast, openTab, type Tab } from '../support/tabs.ts';
@@ -16,21 +16,6 @@ afterEach(() => {
 
 /** Record with ads granted, as another tab writes it. */
 const ADS_GRANTED = serialized({ ads: decisionOf('granted') });
-
-/** Fires on the window the `storage` event that the browser fires in the other tabs. */
-function fireStorageEvent(init: {
-  readonly key: string | null;
-  readonly storageArea: Storage;
-}): void {
-  const { window } = testDom;
-  window.dispatchEvent(new window.StorageEvent('storage', init));
-}
-
-/** Another tab saves `text` in localStorage under `key` and the browser fires `storage` here. */
-function writeFromAnotherTab(text: string, key = 'lgpder'): void {
-  localStorage.setItem(key, text);
-  fireStorageEvent({ key, storageArea: localStorage });
-}
 
 /** Lets the pending messages of every `BroadcastChannel` be delivered. */
 async function settle(): Promise<void> {

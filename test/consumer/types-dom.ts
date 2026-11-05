@@ -1,9 +1,10 @@
 /**
  * Type tests compiled against the published `.d.ts` files of the subpaths whose types use the DOM
- * (`lib: ["es2022", "dom"]`). They repeat a representative subset of `test/scripts/types.check.ts` and
- * `test/ui/types.check.ts`.
+ * (`lib: ["es2022", "dom"]`). They repeat a representative subset of `test/scripts/types.check.ts`,
+ * `test/ui/types.check.ts` and `test/init/types.check.ts`.
  */
 import { createConsentManager } from 'lgpder';
+import { init, type ConsentApp, type InitOptions } from 'lgpder/init';
 import {
   connectScripts,
   type ConsentScripts,
@@ -72,3 +73,28 @@ ui.openPreferences(['analytics']);
 
 // @ts-expect-error unknown purpose in openPreferences
 ui.openPreferences(['typo']);
+
+// lgpder/init: P and C inferred from the purposes, which take the keys of every layer.
+const initOptions = {
+  purposes: {
+    analytics: {
+      category: 'statistics',
+      title: 'Estatísticas',
+      integrations: ['google-analytics'],
+      cookies: ['my_*'],
+    },
+    ads: { consentMode: ['ad_storage'] },
+  },
+  storage: 'cookie',
+  revocation: 'manual',
+  onRevoke: (event: RevokeEvent<Id>) => event.requiresReload,
+  necessary: { title: 'Essenciais' },
+  floatingButton: false,
+} as const satisfies InitOptions<Id, 'statistics'>;
+const app = init(initOptions);
+export type InitInference = Expect<Equal<typeof app, ConsentApp<Id, 'statistics'>>>;
+app.decide({ ads: 'granted' });
+app.scan(document.body);
+
+// @ts-expect-error record is not an option of init
+init({ purposes: { ads: {} }, record: null });

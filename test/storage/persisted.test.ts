@@ -12,6 +12,15 @@ afterEach(closeTabs);
 /** Record with ads granted, as written by a decision of the test clock. */
 const ADS_GRANTED = serialized({ ads: decisionOf('granted') });
 
+/** Record with analytics granted under its current version. */
+const ANALYTICS_GRANTED = serialized({ analytics: decisionOf('granted', { version: '2026-10' }) });
+
+/** Record with analytics granted and an expired grant of ads, which the memory discards. */
+const WITH_EXPIRED = serialized({
+  analytics: decisionOf('granted', { version: '2026-10' }),
+  ads: decisionOf('granted', { decidedAt: START - DEFAULT_MAX_AGE }),
+});
+
 function openOn(adapter: MemoryAdapter): Tab {
   return openTab({ storage: adapter, crossTab: false });
 }
@@ -81,23 +90,51 @@ describe('isPersisted: the saved record is no more permissive than the memory', 
     assert.equal(storage.isPersisted(), false);
   });
 
-  it('false while the saved text differs from the memory, as with a decision expired on load', () => {
-    const expired = decisionOf('granted', { decidedAt: START - DEFAULT_MAX_AGE });
-    const adapter = createMemoryAdapter(
-      serialized({ analytics: decisionOf('granted', { version: '2026-10' }), ads: expired }),
+  it('true while the memory is what the saved text hydrated, as with a decision expired on load', () => {
+    const { storage } = openOn(createMemoryAdapter(WITH_EXPIRED));
+
+    assert.equal(storage.isPersisted(), true);
+  });
+
+  it('true while the memory is what the saved text hydrated, with a purpose of another configuration', () => {
+    const { storage } = openOn(
+      createMemoryAdapter(serialized({ ads: decisionOf('granted'), chat: decisionOf('granted') })),
     );
 
-    const { storage } = openOn(adapter);
+    assert.equal(storage.isPersisted(), true);
+  });
 
+  it('false once the memory changes after that restore and the write is not confirmed', () => {
+    const adapter = createMemoryAdapter(WITH_EXPIRED);
+    const { storage } = openOn(adapter);
+    adapter.failWrite = true;
+    adapter.discardRemove = true;
+
+    storage.decide({ analytics: 'denied' });
+
+    assert.equal(adapter.value, WITH_EXPIRED);
     assert.equal(storage.isPersisted(), false);
   });
 
-  it('true again after the next confirmed write', () => {
-    const expired = decisionOf('granted', { decidedAt: START - DEFAULT_MAX_AGE });
-    const adapter = createMemoryAdapter(
-      serialized({ analytics: decisionOf('granted', { version: '2026-10' }), ads: expired }),
-    );
-    const { storage } = openOn(adapter);
+  it('false when a listener changed the memory during the delivery of the restore', () => {
+    const adapter = createMemoryAdapter();
+    const { consent, storage } = openOn(adapter);
+    consent.subscribe(({ source }) => {
+      if (source === 'restore') consent.decide({ analytics: 'denied' });
+    });
+    adapter.value = ANALYTICS_GRANTED; // written by another tab, without an event
+    adapter.failWrite = true;
+    adapter.discardRemove = true;
+
+    storage.sync();
+
+    assert.equal(consent.getSnapshot().status.analytics, 'denied');
+    assert.equal(adapter.value, ANALYTICS_GRANTED);
+    assert.equal(storage.isPersisted(), false);
+  });
+
+  it('true after a confirmed write that follows that restore', () => {
+    const { storage } = openOn(createMemoryAdapter(WITH_EXPIRED));
 
     storage.decide({ health: 'denied' });
 

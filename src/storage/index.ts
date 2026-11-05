@@ -10,7 +10,13 @@
  * @packageDocumentation
  */
 
-import type { ConsentChange, ConsentChoices, ConsentManager, ConsentRecord } from '../index.ts';
+import type {
+  ConsentChange,
+  ConsentChoices,
+  ConsentManager,
+  ConsentRecord,
+  ConsentSnapshot,
+} from '../index.ts';
 import {
   cookieAdapter,
   localStorageAdapter,
@@ -104,7 +110,9 @@ export interface ConsentStorage<P extends string = string> {
   readonly sync: () => void;
   /**
    * Whether the saved record is known to be no more permissive than the memory: nothing is saved,
-   * or the saved text is the record in memory. `false` while unknown, such as after a write and a
+   * the saved text is the record in memory, or it is the text the memory was restored from, not
+   * changed since, which a reload hydrates again (such as one with purposes of another
+   * configuration or expired decisions). `false` while unknown, such as after a write and a
    * removal that were not confirmed, or outside the browser. A reload is only safe when it is
    * `true`.
    */
@@ -287,6 +295,14 @@ export function connectStorage<P extends string>(
   // Whether a removal failed, so the saved text may differ from lastSeen, until the next successful
   // read or confirmed write. lastSeen is kept, so that what is left is not adopted again.
   let unknown = false;
+  // The saved text the memory was last restored from, and the snapshot that restore produced: while
+  // the memory is still that snapshot, a reload hydrates it again from that text, even when its
+  // serialization differs from the text (purposes of another configuration, expired decisions).
+  let restoredFrom: string | null | undefined;
+  let restored: ConsentSnapshot<P> | undefined;
+  // Changes delivered to this layer, to tell whether a listener changed the memory during the
+  // delivery of a restore.
+  let delivered = 0;
   let tabs: TabLink | undefined;
   let unsubscribe: (() => void) | undefined;
   let destroyed = false;
@@ -320,7 +336,11 @@ export function connectStorage<P extends string>(
     if (saved === lastSeen && !unverified) return; // nothing new since the last read or write
     lastSeen = saved;
     unverified = false;
+    const before = delivered;
     consent.restore(saved);
+    restoredFrom = saved;
+    // More than the change of the restore itself: the memory is no longer what `saved` hydrates.
+    restored = delivered - before > 1 ? undefined : consent.getSnapshot();
     // Expired, invalid or foreign content: keep nothing that no longer records a decision.
     if (saved !== null && isEmpty(consent.getSnapshot().record)) removeSaved();
   };
@@ -352,6 +372,7 @@ export function connectStorage<P extends string>(
   };
 
   const onChange = ({ source, snapshot }: ConsentChange<P>): void => {
+    delivered += 1;
     // Restores are not written: the ones of sync came from the storage, and adopt writes its own.
     // A change that is no longer the memory, because a listener committed another one during its
     // delivery, is not written either: the later change, already queued, carries the memory.
@@ -400,8 +421,12 @@ export function connectStorage<P extends string>(
     sync,
     isPersisted: (): boolean => {
       assertAlive();
+      const snapshot = consent.getSnapshot();
       return (
-        !unknown && (lastSeen === null || lastSeen === JSON.stringify(consent.getSnapshot().record))
+        !unknown &&
+        (lastSeen === null ||
+          lastSeen === JSON.stringify(snapshot.record) ||
+          (lastSeen === restoredFrom && snapshot === restored))
       );
     },
     destroy: (): void => {

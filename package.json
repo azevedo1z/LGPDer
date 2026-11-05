@@ -38,6 +38,10 @@
       "types": "./dist/ui/index.d.ts",
       "default": "./dist/ui/index.js"
     },
+    "./init": {
+      "types": "./dist/init/index.d.ts",
+      "default": "./dist/init/index.js"
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.js",
@@ -93,6 +97,12 @@
       "name": "core (lgpder)",
       "path": "dist/index.js",
       "limit": "3 kB",
+      "gzip": true
+    },
+    {
+      "name": "all subpaths together",
+      "path": "test/size/all.js",
+      "limit": "15 kB",
       "gzip": true
     }
   ]

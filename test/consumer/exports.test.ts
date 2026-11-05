@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import { createConsentManager } from 'lgpder';
 import { connectEvidence } from 'lgpder/evidence';
 import { connectGoogle, consentDefaultSnippet } from 'lgpder/google';
+import { init } from 'lgpder/init';
 import { connectScripts } from 'lgpder/scripts';
 import { connectStorage } from 'lgpder/storage';
 import { createPlaceholder, mountUi, ptBR } from 'lgpder/ui';
@@ -167,6 +168,33 @@ describe('compiled package, imported by the name lgpder/ui', () => {
     assert.throws(() => mountUi(consent, { texts: { banner: { title: '' } } }), {
       name: 'TypeError',
       message: '[lgpder] "texts.banner.title" must be a non-empty string.',
+    });
+  });
+});
+
+describe('compiled package, imported by the name lgpder/init', () => {
+  it('the only runtime export is init', async () => {
+    const exported = await import('lgpder/init');
+
+    assert.deepStrictEqual(Object.keys(exported), ['init']);
+  });
+
+  it('on the server, without document, validates and works in memory', () => {
+    const app = init({
+      purposes: { ads: { title: 'Publicidade', integrations: ['google-ads'] } },
+      now: () => INSTANT,
+    });
+
+    app.grantAll();
+
+    assert.deepStrictEqual(app.manager.getSnapshot().record, {
+      format: 1,
+      decisions: { ads: { status: 'granted', decidedAt: INSTANT } },
+    });
+    app.destroy();
+    assert.throws(() => init({ purposes: { ads: { cookies: ['*'] } } }), {
+      name: 'TypeError',
+      message: '[lgpder] Invalid cookie pattern: "*"; use a cookie name, optionally ending in "*".',
     });
   });
 });

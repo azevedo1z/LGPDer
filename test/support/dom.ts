@@ -90,6 +90,20 @@ export const testDom: TestDom = Object.freeze({
   navigate,
 });
 
+/** Fires on the window the `storage` event that the browser fires in the other tabs. */
+export function fireStorageEvent(init: {
+  readonly key: string | null;
+  readonly storageArea: Storage;
+}): void {
+  window.dispatchEvent(new window.StorageEvent('storage', init));
+}
+
+/** Another tab saves `text` in localStorage under `key` and the browser fires `storage` here. */
+export function writeFromAnotherTab(text: string, key = 'lgpder'): void {
+  window.localStorage.setItem(key, text);
+  fireStorageEvent({ key, storageArea: window.localStorage });
+}
+
 /**
  * Makes `document.readyState` read `'loading'` until {@link finishLoading}, as when a layer is
  * connected by a script in the `<head>`.
