@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { createConsentManager } from 'lgpder';
+import { connectEvidence } from 'lgpder/evidence';
 import { connectGoogle, consentDefaultSnippet } from 'lgpder/google';
 import { connectScripts } from 'lgpder/scripts';
 import { connectStorage } from 'lgpder/storage';
@@ -115,5 +116,33 @@ describe('compiled package, imported by the name lgpder/google', () => {
       () => Reflect.apply(connectGoogle, undefined, [consent, { purposes: { typo: {} } }]),
       { name: 'RangeError', message: '[lgpder] Unknown purpose: "typo".' },
     );
+  });
+});
+
+describe('compiled package, imported by the name lgpder/evidence', () => {
+  it('the only runtime export is connectEvidence', async () => {
+    const exported = await import('lgpder/evidence');
+
+    assert.deepStrictEqual(Object.keys(exported), ['connectEvidence']);
+  });
+
+  it('on the server, without document, validates and connects an inert handle', () => {
+    const consent = createConsentManager({ purposes: { ads: {} }, now: () => INSTANT });
+    const reported: unknown[] = [];
+    const evidence = connectEvidence(consent, {
+      endpoint: '/api/consent',
+      onDecision: (change) => {
+        reported.push(change);
+      },
+    });
+
+    consent.decide({ ads: 'granted' });
+
+    assert.deepStrictEqual(reported, []);
+    evidence.destroy();
+    assert.throws(() => connectEvidence(consent, { endpoint: 'http://a.test/' }), {
+      name: 'TypeError',
+      message: '[lgpder] "endpoint" must be an HTTPS URL, or HTTP on localhost.',
+    });
   });
 });

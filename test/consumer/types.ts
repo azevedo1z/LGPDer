@@ -1,11 +1,22 @@
 /**
  * Type tests compiled against the published `.d.ts` files, with the TypeScript version of the
- * repository and without the DOM types (`lib: ["es2022"]`): the core, lgpder/storage and
- * lgpder/google must not require them from the consumer. They repeat a
- * representative subset of `test/types.check.ts`, `test/storage/types.check.ts` and
- * `test/google/types.check.ts`.
+ * repository and without the DOM types (`lib: ["es2022"]`): the core, lgpder/storage,
+ * lgpder/google and lgpder/evidence must not require them from the consumer. They repeat a
+ * representative subset of `test/types.check.ts`, `test/storage/types.check.ts`,
+ * `test/google/types.check.ts` and `test/evidence/types.check.ts`.
  */
-import { createConsentManager, type ConsentManager, type ConsentSnapshot } from 'lgpder';
+import {
+  createConsentManager,
+  type ConsentChange,
+  type ConsentManager,
+  type ConsentSnapshot,
+} from 'lgpder';
+import {
+  connectEvidence,
+  type ConsentEvidence,
+  type EvidenceOptions,
+  type EvidencePayload,
+} from 'lgpder/evidence';
 import {
   connectGoogle,
   consentDefaultSnippet,
@@ -86,3 +97,18 @@ export const types: readonly ConsentType[] = ['ad_storage', 'security_storage'];
 
 // @ts-expect-error unknown consent type
 connectGoogle(consent, { purposes: { analytics: { consentMode: ['ads_storage'] } } });
+
+// lgpder/evidence: the hook takes the changes of the manager, and the payload its purposes.
+const changedPurposes: Id[] = [];
+const evidenceOptions: EvidenceOptions<Id> = {
+  endpoint: '/api/consent',
+  onDecision: (change: ConsentChange<Id>) => {
+    changedPurposes.push(...change.changed);
+  },
+  onError: () => undefined,
+};
+export const evidence: ConsentEvidence = connectEvidence(consent, evidenceOptions);
+export type PayloadChanged = Expect<Equal<EvidencePayload<Id>['changed'], readonly Id[]>>;
+
+// @ts-expect-error unknown option
+connectEvidence(consent, { endpoint: '/api/consent', retry: true });

@@ -30,6 +30,10 @@
       "types": "./dist/google/index.d.ts",
       "default": "./dist/google/index.js"
     },
+    "./evidence": {
+      "types": "./dist/evidence/index.d.ts",
+      "default": "./dist/evidence/index.js"
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.js",
