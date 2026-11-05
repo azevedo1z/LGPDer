@@ -22,6 +22,10 @@
       "types": "./dist/storage/index.d.ts",
       "default": "./dist/storage/index.js"
     },
+    "./scripts": {
+      "types": "./dist/scripts/index.d.ts",
+      "default": "./dist/scripts/index.js"
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.js",
@@ -51,7 +55,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "node --test --test-timeout=30000 --experimental-test-coverage --test-coverage-include=\"src/**\" --test-coverage-lines=90 --test-coverage-branches=90 --test-coverage-functions=90 \"test/{core,tooling,storage,scripts,google,evidence,ui,init}/*.test.ts\"",
-    "test:package": "npm run build && publint --strict && attw --pack . --profile esm-only && tsc -p test/consumer/tsconfig.dist.json && node --test \"test/consumer/*.test.ts\"",
+    "test:package": "npm run build && publint --strict && attw --pack . --profile esm-only && tsc -p test/consumer/tsconfig.dist.json && tsc -p test/consumer/tsconfig.dist.dom.json && node --test \"test/consumer/*.test.ts\"",
     "size": "npm run build && size-limit",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run test:package && npm run size",
     "prepack": "npm run build",

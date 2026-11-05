@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { createConsentManager } from 'lgpder';
+import { connectScripts } from 'lgpder/scripts';
 import { connectStorage } from 'lgpder/storage';
 
 /** 2026-10-31T12:00:00.000Z. */
@@ -63,5 +64,30 @@ describe('compiled package, imported by the name lgpder/storage', () => {
     assert.equal(consent.getSnapshot().status.ads, 'granted');
     assert.equal(storage.isPersisted(), false);
     storage.destroy();
+  });
+});
+
+describe('compiled package, imported by the name lgpder/scripts', () => {
+  it('the only runtime export is connectScripts', async () => {
+    const exported = await import('lgpder/scripts');
+
+    assert.deepStrictEqual(Object.keys(exported), ['connectScripts']);
+  });
+
+  it('on the server, without document, connects an inert handle', () => {
+    const consent = createConsentManager({ purposes: { ads: {} }, now: () => INSTANT });
+    const scripts = connectScripts(consent, {
+      purposes: { ads: { integrations: ['google-ads'] } },
+    });
+    const log: string[] = [];
+
+    consent.decide({ ads: 'granted' });
+    scripts.onGranted('ads', () => {
+      log.push('fn ran');
+    });
+
+    assert.deepStrictEqual(log, []);
+    assert.equal(scripts.wouldReload({ ads: 'denied' }), false);
+    scripts.destroy();
   });
 });
