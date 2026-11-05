@@ -4,7 +4,7 @@ LGPDer decides whether trackers may run on a page, so a flaw that grants consent
 
 ## Supported versions
 
-The project has no published release yet. Security fixes are applied only to the latest code on the `main` branch.
+Until 1.0, security fixes are released only for the latest published version (`0.x`) and applied to the `main` branch.
 
 ## Reporting a vulnerability
 

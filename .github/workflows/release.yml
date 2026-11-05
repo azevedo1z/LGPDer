@@ -44,7 +44,14 @@ jobs:
             exit 1
           fi
       - name: Publish to npm
-        run: npm publish --provenance --access public
+        # Skipped when the version is already on npm, so a run can be retried after a later step fails.
+        run: |
+          spec="$(node -p "const p = require('./package.json'); p.name + '@' + p.version")"
+          if npm view "$spec" version > /dev/null 2>&1; then
+            echo "$spec is already on npm; skipping the publish."
+          else
+            npm publish --provenance --access public
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Create the GitHub Release

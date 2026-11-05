@@ -7,6 +7,7 @@
 </p>
 
 <p align="center">
+  <a href="https://www.npmjs.com/package/lgpder"><img src="https://img.shields.io/npm/v/lgpder" alt="Versão no npm"/></a>
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="Licença: MIT"/>
   <img src="https://img.shields.io/badge/status-early%20development-orange" alt="Status: em desenvolvimento inicial"/>
   <img src="https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript&logoColor=white" alt="TypeScript 6.0"/>
@@ -319,7 +320,7 @@ Refletem a versão atual e são bons pontos de partida para contribuições:
 
 ## Status do projeto
 
-O LGPDer está em desenvolvimento inicial (versão `0.1.0`, ainda não publicada no npm). O fluxo de banner, preferências, persistência, bloqueio, revogação e Consent Mode está implementado e testado, e a API ainda pode mudar antes da 1.0.
+O LGPDer está em desenvolvimento inicial (versões `0.x` no npm). O fluxo de banner, preferências, persistência, bloqueio, revogação e Consent Mode está implementado e testado, e a API ainda pode mudar antes da 1.0.
 
 O pacote segue o Versionamento Semântico: acréscimos saem numa versão minor; até a 1.0, mudanças de semântica ou do formato do registro também saem numa minor, registradas no [CHANGELOG](CHANGELOG.md).
 
