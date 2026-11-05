@@ -2,16 +2,9 @@
 import assert from 'node:assert/strict';
 import { afterEach, describe, it } from 'node:test';
 
+import { captureMicrotasks } from '../support/capture.ts';
 import { testDom } from '../support/dom.ts';
-import {
-  captureMicrotasks,
-  closePages,
-  find,
-  findAll,
-  openPage,
-  recordingRenderer,
-  render,
-} from '../support/page.ts';
+import { closePages, find, findAll, openPage, recordingRenderer, render } from '../support/page.ts';
 import { decisionOf, serialized } from '../support/records.ts';
 
 afterEach(() => {

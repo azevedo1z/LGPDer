@@ -74,27 +74,6 @@ export function recordingRenderer(): RecordingRenderer {
   };
 }
 
-/**
- * Replaces the global `queueMicrotask` with a collector, so that an error rethrown by the layer
- * does not end the test. Returns the scheduled callbacks, which the test may run.
- */
-export function captureMicrotasks(t: TestContext): (() => void)[] {
-  const scheduled: (() => void)[] = [];
-  t.mock.method(globalThis, 'queueMicrotask', (callback: () => void) => {
-    scheduled.push(callback);
-  });
-  return scheduled;
-}
-
-/** Records the messages written with `console.warn` during the test, without printing them. */
-export function captureWarnings(t: TestContext): string[] {
-  const warnings: string[] = [];
-  t.mock.method(console, 'warn', (message: string) => {
-    warnings.push(message);
-  });
-  return warnings;
-}
-
 /** Waits for the microtasks already queued, such as the one that reloads the page. */
 export async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();

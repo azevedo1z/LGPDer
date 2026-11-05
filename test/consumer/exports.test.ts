@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { createConsentManager } from 'lgpder';
+import { connectGoogle, consentDefaultSnippet } from 'lgpder/google';
 import { connectScripts } from 'lgpder/scripts';
 import { connectStorage } from 'lgpder/storage';
 
@@ -89,5 +90,30 @@ describe('compiled package, imported by the name lgpder/scripts', () => {
     assert.deepStrictEqual(log, []);
     assert.equal(scripts.wouldReload({ ads: 'denied' }), false);
     scripts.destroy();
+  });
+});
+
+describe('compiled package, imported by the name lgpder/google', () => {
+  it('the runtime exports are connectGoogle and consentDefaultSnippet', async () => {
+    const exported = await import('lgpder/google');
+
+    assert.deepStrictEqual(Object.keys(exported), ['connectGoogle', 'consentDefaultSnippet']);
+    assert.match(consentDefaultSnippet, /^window\.dataLayer=window\.dataLayer\|\|\[\];/);
+  });
+
+  it('on the server, without document, validates and connects an inert handle', () => {
+    const consent = createConsentManager({ purposes: { ads: {} }, now: () => INSTANT });
+    const google = connectGoogle(consent, {
+      purposes: { ads: { integrations: ['google-ads'] } },
+    });
+
+    consent.decide({ ads: 'granted' });
+
+    assert.equal(Reflect.has(globalThis, 'dataLayer'), false);
+    google.destroy();
+    assert.throws(
+      () => Reflect.apply(connectGoogle, undefined, [consent, { purposes: { typo: {} } }]),
+      { name: 'RangeError', message: '[lgpder] Unknown purpose: "typo".' },
+    );
   });
 });

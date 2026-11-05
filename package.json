@@ -26,6 +26,10 @@
       "types": "./dist/scripts/index.d.ts",
       "default": "./dist/scripts/index.js"
     },
+    "./google": {
+      "types": "./dist/google/index.d.ts",
+      "default": "./dist/google/index.js"
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.js",

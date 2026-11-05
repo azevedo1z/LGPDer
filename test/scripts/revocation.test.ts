@@ -7,9 +7,9 @@ import { afterEach, describe, it } from 'node:test';
 
 import type { RevokeEvent, ScriptsOptions } from 'lgpder/scripts';
 
+import { captureMicrotasks } from '../support/capture.ts';
 import { testDom } from '../support/dom.ts';
 import {
-  captureMicrotasks,
   closePages,
   connectPage,
   find,

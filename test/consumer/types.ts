@@ -1,10 +1,18 @@
 /**
  * Type tests compiled against the published `.d.ts` files, with the TypeScript version of the
- * repository and without the DOM types (`lib: ["es2022"]`): the core and lgpder/storage must not
- * require them from the consumer. They repeat a representative subset of `test/types.check.ts` and
- * `test/storage/types.check.ts`.
+ * repository and without the DOM types (`lib: ["es2022"]`): the core, lgpder/storage and
+ * lgpder/google must not require them from the consumer. They repeat a
+ * representative subset of `test/types.check.ts`, `test/storage/types.check.ts` and
+ * `test/google/types.check.ts`.
  */
 import { createConsentManager, type ConsentManager, type ConsentSnapshot } from 'lgpder';
+import {
+  connectGoogle,
+  consentDefaultSnippet,
+  type ConsentGoogle,
+  type ConsentType,
+  type GoogleOptions,
+} from 'lgpder/google';
 import {
   connectStorage,
   cookieAdapter,
@@ -65,3 +73,16 @@ export const adapters: readonly StorageAdapter[] = [
 
 // @ts-expect-error unknown id in the decide of the storage
 storage.decide({ typo: 'granted' });
+
+// lgpder/google: the options take the purposes of the manager, and the snippet is a string.
+const googleOptions: GoogleOptions<Id> = {
+  purposes: {
+    analytics: { integrations: ['google-analytics'], consentMode: ['functionality_storage'] },
+  },
+};
+export const google: ConsentGoogle = connectGoogle(consent, googleOptions);
+export const snippet: string = consentDefaultSnippet;
+export const types: readonly ConsentType[] = ['ad_storage', 'security_storage'];
+
+// @ts-expect-error unknown consent type
+connectGoogle(consent, { purposes: { analytics: { consentMode: ['ads_storage'] } } });

@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
-import { describe, it, type TestContext } from 'node:test';
+import { describe, it } from 'node:test';
 import { setImmediate } from 'node:timers/promises';
 
 import type { ConsentChange, ConsentManager, ConsentStatus } from 'lgpder';
 
+import { captureMicrotasks } from '../support/capture.ts';
 import { decisionOf, recordOf } from '../support/records.ts';
 import { callUntyped, setup, type PurposeId } from '../support/setup.ts';
 
@@ -224,15 +225,6 @@ describe('order of an effective operation', () => {
 });
 
 describe('listener error', () => {
-  /** Replaces the global queueMicrotask with a collector, so the rethrown error does not end the test. */
-  function captureMicrotasks(t: TestContext): (() => void)[] {
-    const scheduled: (() => void)[] = [];
-    t.mock.method(globalThis, 'queueMicrotask', (callback: () => void) => {
-      scheduled.push(callback);
-    });
-    return scheduled;
-  }
-
   it('the next listeners are called and the operation returns normally', (t) => {
     captureMicrotasks(t);
     const { consent } = setup();

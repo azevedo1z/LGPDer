@@ -4,8 +4,9 @@ import { afterEach, describe, it } from 'node:test';
 
 import type { RevokeEvent } from 'lgpder/scripts';
 
+import { captureMicrotasks } from '../support/capture.ts';
 import { testDom } from '../support/dom.ts';
-import { captureMicrotasks, closePages, openPage } from '../support/page.ts';
+import { closePages, openPage } from '../support/page.ts';
 import { decisionOf, serialized } from '../support/records.ts';
 import { callUntyped, type PurposeId } from '../support/setup.ts';
 
