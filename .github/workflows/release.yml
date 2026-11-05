@@ -2,7 +2,8 @@ name: Release
 
 # Pushing a tag vX.Y.Z publishes that version to npm and creates its GitHub Release, with the
 # section of CHANGELOG.md for the version as the release notes. The CHANGELOG is the only place
-# where the notes are written.
+# where the notes are written. The publish uses npm trusted publishing (OIDC, through the
+# id-token permission), with no token stored in the repository; npm generates the provenance.
 on:
   push:
     tags: ['v*']
@@ -50,10 +51,8 @@ jobs:
           if npm view "$spec" version > /dev/null 2>&1; then
             echo "$spec is already on npm; skipping the publish."
           else
-            npm publish --provenance --access public
+            npm publish --access public
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Create the GitHub Release
         run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
         env:
