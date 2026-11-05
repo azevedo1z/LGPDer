@@ -50,7 +50,7 @@
 
 Sites brasileiros que usam analytics ou publicidade precisam do consentimento do titular antes de gravar cookies ou carregar rastreadores. Na prática, muitos banners de cookies são só decorativos: a tag do Google carrega antes de qualquer clique, o "rejeitar" fica escondido numa segunda tela, não há como revogar depois, e a revogação muda uma flag enquanto o rastreador continua rodando na página.
 
-Fazer isso direito à mão significa resolver os mesmos problemas toda vez: gravar uma decisão por finalidade, persisti-la, manter as abas sincronizadas, bloquear scripts e iframes até haver consentimento, avisar o Google Consent Mode, apagar cookies na revogação e construir uma interface acessível. Plataformas comerciais de consentimento resolvem isso, mas acrescentam um script de terceiro, um painel e dados enviados a outra empresa.
+Fazer isso direito à mão significa resolver os mesmos problemas toda vez: gravar uma decisão por finalidade, persisti-la, manter as abas sincronizadas, bloquear scripts e iframes até haver consentimento, avisar o Google Consent Mode, apagar cookies na revogação e construir uma interface acessível. Plataformas comerciais de consentimento resolvem isso, mas costumam acrescentar um script de terceiro, um painel e dados enviados a outra empresa.
 
 O LGPDer resolve dentro da própria aplicação, como um pacote npm, sem backend e sem telemetria.
 
@@ -64,7 +64,7 @@ O LGPDer resolve dentro da própria aplicação, como um pacote npm, sem backend
 - **Expiração e novo consentimento.** As decisões expiram em 365 dias por padrão, e uma nova versão da finalidade pergunta de novo.
 - **Prova do consentimento.** Um hook opcional e um endpoint da própria aplicação que recebe cada decisão; o horário preciso vem do backend, e nenhum identificador é gerado no navegador.
 - **Núcleo headless.** Um núcleo de 2,3 kB com estado tipado, decisões atômicas e notificações, compatível com o `useSyncExternalStore` do React, para quem constrói a própria interface.
-- **Acessibilidade.** WCAG 2.2 AA: navegação por teclado, foco preso no diálogo aberto, `Esc` fecha, papéis e rótulos ARIA, contraste do tema padrão, verificado com axe-core nos testes.
+- **Acessibilidade.** Projetado para WCAG 2.2 AA: navegação por teclado, foco preso no diálogo aberto, `Esc` fecha, papéis e rótulos ARIA e contraste do tema padrão. Os testes rodam o axe-core em cada componente e verificam o contraste e o tamanho dos alvos na folha de estilo; ainda não há testes em navegadores reais nem com tecnologia assistiva (veja as [limitações conhecidas](#limitações-conhecidas)).
 
 ## Como funciona
 
@@ -77,7 +77,7 @@ revogação  →  gravada  →  iframes removidos, limpezas executadas, cookies 
 1. O `init` cria o núcleo, conecta o storage e adota o registro salvo. Restaurar nunca é decisão do titular.
 2. Enquanto alguma finalidade está sem decisão, expirada ou com versão nova, o banner aparece.
 3. Cada clique grava uma decisão por finalidade. O storage salva, a camada do Google envia o update do Consent Mode, e a camada de scripts ativa os elementos bloqueados cujas finalidades estão todas concedidas.
-4. Na revogação, nesta aba ou em outra, a camada de scripts desfaz o que pode, apaga os cookies da finalidade e recarrega a página quando um script que ela ativou continua rodando.
+4. Na revogação, nesta aba ou em outra, a camada de scripts desfaz o que pode, apaga os cookies da finalidade e recarrega a página quando ainda roda código que ela não consegue parar: um script que ela ativou ou uma função de `onGranted` que não devolveu limpeza.
 
 ## Casos de uso
 
@@ -281,7 +281,7 @@ Valem em todas as camadas e prevalecem sobre qualquer conveniência:
 
 ## Privacidade e segurança
 
-- O registro guarda só, por finalidade, a decisão, a versão e o dia da decisão. Nenhum identificador, endereço IP, user agent ou texto exibido.
+- O registro guarda só, por finalidade, a decisão, a versão e o momento da decisão, arredondado por padrão ao início do dia UTC. Nenhum identificador, endereço IP, user agent ou texto exibido.
 - Dados salvos são não confiáveis: são validados com rigor, nunca lançam erro, e o que for inválido vira ausência de decisão. As opções são lidas só como propriedades próprias, então um protótipo poluído não concede consentimento.
 - Sem `eval`, `new Function` nem `import()` dinâmico; os textos são inseridos como texto, nunca como HTML. Políticas de CSP estritas são suportadas (veja as [notas de CSP](docs/init.md#content-security-policy)).
 - O armazenamento do navegador pode ser lido ou alterado por qualquer script da mesma origem: proteja a aplicação contra XSS.
@@ -316,7 +316,7 @@ Refletem a versão atual e são bons pontos de partida para contribuições:
 - **Interface só em português.** Todos os textos podem ser substituídos, mas nenhum outro idioma vem pronto.
 - **Sem build para CDN nem uso por tag `<script>`.** Instale pelo npm e empacote.
 - **Sem bindings de framework.** React, Vue e Next.js usam o núcleo diretamente, como mostram as [receitas](docs/ssr-react.md).
-- **Limites da limpeza de cookies.** Cookies `HttpOnly`, `Partitioned`, de outro path ou de outro domínio não podem ser apagados pela página.
+- **Limites da limpeza de cookies.** Cookies `HttpOnly`, de outro path ou de outro domínio não podem ser apagados pela página, e a biblioteca não apaga cookies `Partitioned`.
 
 ## Status do projeto
 
@@ -336,6 +336,8 @@ O LGPDer é uma biblioteca técnica para registrar, ler, alterar e revogar decis
 - decidir, como questão jurídica, se usa o modo avançado do Google Consent Mode.
 
 Este aviso é informativo e não é parecer jurídico. O guia [O LGPDer e a LGPD](docs/lgpd.md) relaciona a biblioteca com a lei tema a tema, separando obrigações legais, boas práticas da ANPD e decisões técnicas da biblioteca.
+
+O LGPDer não tem vínculo com o Google nem é patrocinado ou endossado por ele. Google, Google Analytics, Google Ads e Google Tag Manager são marcas da Google LLC.
 
 ## Documentação
 

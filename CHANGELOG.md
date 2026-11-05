@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Fixed
+
+- **Documentation.** Corrected statements that went beyond the code: the accessibility checks (the contrast and the target sizes are checked on the style sheet, not by axe-core), the reload on revocation (also for `onGranted` code without a cleanup), the time stored in the record (rounded to the day only by default), the cleanup of `Partitioned` cookies (a limit of the library, not of the page), the cookie pattern syntax and the scope of the `debug` warning about Google tags. Added a note that LGPDer is not affiliated with Google, and stated in `docs/lgpd.md` that it is not legal advice.
+
 ## [0.1.0] - 2026-11-05
 
 Initial release: a consent manager for the Brazilian LGPD, published as one ESM package with optional subpaths. See the [README](README.md) for the quick start and the guides in `docs/` for the full reference.
