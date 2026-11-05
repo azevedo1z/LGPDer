@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report a bug. For security vulnerabilities, do not use this form; follow the [security policy](https://github.com/azevedo1z/lgpder/blob/main/SECURITY.md) instead.
+        Thanks for taking the time to report a bug. For security vulnerabilities, do not use this form; follow the [security policy](https://github.com/azevedo1z/LGPDer/blob/main/SECURITY.md) instead.
   - type: textarea
     id: description
     attributes:

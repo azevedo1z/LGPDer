@@ -10,7 +10,7 @@ Until 1.0, security fixes are released only for the latest published version (`0
 
 Please do **not** report security vulnerabilities through public issues, pull requests or discussions.
 
-Report them privately through GitHub: open the repository's [Security tab](https://github.com/azevedo1z/lgpder/security) and select **Report a vulnerability**.
+Report them privately through GitHub: open the repository's [Security tab](https://github.com/azevedo1z/LGPDer/security) and select **Report a vulnerability**.
 
 Include as much of the following as possible:
 

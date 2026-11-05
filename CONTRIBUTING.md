@@ -5,12 +5,12 @@ Thank you for your interest in improving LGPDer. Contributions of all sizes are 
 ## Before you start
 
 - Read the [README](README.md) to understand the workflow, the [principles](README.md#principles) and the [known limitations](README.md#known-limitations).
-- Search the [existing issues](https://github.com/azevedo1z/lgpder/issues) to avoid duplicates.
+- Search the [existing issues](https://github.com/azevedo1z/LGPDer/issues) to avoid duplicates.
 - For security vulnerabilities, do **not** open a public issue. Follow the [security policy](SECURITY.md) instead.
 
 ## Reporting bugs
 
-Open a [bug report](https://github.com/azevedo1z/lgpder/issues/new?template=bug_report.yml) with:
+Open a [bug report](https://github.com/azevedo1z/LGPDer/issues/new?template=bug_report.yml) with:
 
 - What you expected to happen and what happened instead
 - A minimal reproduction: the `init` options (or the layers you connect) and the relevant HTML
@@ -19,7 +19,7 @@ Open a [bug report](https://github.com/azevedo1z/lgpder/issues/new?template=bug_
 
 ## Suggesting improvements
 
-Open a [feature request](https://github.com/azevedo1z/lgpder/issues/new?template=feature_request.yml) describing the problem you want to solve and the proposed solution. For larger changes, such as a new built-in integration or anything listed under known limitations, discuss the approach in an issue before writing code.
+Open a [feature request](https://github.com/azevedo1z/LGPDer/issues/new?template=feature_request.yml) describing the problem you want to solve and the proposed solution. For larger changes, such as a new built-in integration or anything listed under known limitations, discuss the approach in an issue before writing code.
 
 Every proposal is weighed against the [principles](README.md#principles). In particular, a change cannot make any failure path grant consent, treat a restore or a sync as a decision of the data subject, add a runtime dependency or send data to third parties.
 
@@ -28,8 +28,8 @@ Every proposal is weighed against the [principles](README.md#principles). In par
 Requirements: Node.js `24.14` (see `.nvmrc`) and npm.
 
 ```sh
-git clone https://github.com/azevedo1z/lgpder.git
-cd lgpder
+git clone https://github.com/azevedo1z/LGPDer.git
+cd LGPDer
 npm ci
 npm run check
 ```

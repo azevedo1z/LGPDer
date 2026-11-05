@@ -356,8 +356,8 @@ Os guias estão em inglês, exceto o da LGPD.
 
 Contribuições de qualquer tamanho são bem-vindas: relatos de bug, correções na documentação, testes e novas integrações. O [guia de contribuição](CONTRIBUTING.md), em inglês, cobre o ambiente de desenvolvimento, as convenções do projeto e o checklist de pull request.
 
-- **Achou um bug?** Abra um [bug report](https://github.com/azevedo1z/lgpder/issues/new?template=bug_report.yml).
-- **Tem uma ideia?** Abra um [feature request](https://github.com/azevedo1z/lgpder/issues/new?template=feature_request.yml). As [limitações conhecidas](#limitações-conhecidas) são um bom ponto de partida.
+- **Achou um bug?** Abra um [bug report](https://github.com/azevedo1z/LGPDer/issues/new?template=bug_report.yml).
+- **Tem uma ideia?** Abra um [feature request](https://github.com/azevedo1z/LGPDer/issues/new?template=feature_request.yml). As [limitações conhecidas](#limitações-conhecidas) são um bom ponto de partida.
 - **Achou um problema de segurança?** Não abra issue pública; siga a [política de segurança](SECURITY.md).
 
 ## Licença

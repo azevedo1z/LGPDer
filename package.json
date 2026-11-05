@@ -16,13 +16,13 @@
     "consentimento",
     "privacidade"
   ],
-  "homepage": "https://github.com/azevedo1z/lgpder#readme",
+  "homepage": "https://github.com/azevedo1z/LGPDer#readme",
   "bugs": {
-    "url": "https://github.com/azevedo1z/lgpder/issues"
+    "url": "https://github.com/azevedo1z/LGPDer/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/azevedo1z/lgpder.git"
+    "url": "git+https://github.com/azevedo1z/LGPDer.git"
   },
   "author": "Gabriel Azevedo (https://github.com/azevedo1z)",
   "type": "module",

@@ -354,8 +354,8 @@ This notice is informative and is not legal advice. The guide [O LGPDer e a LGPD
 
 Contributions of all sizes are welcome: bug reports, documentation fixes, tests and new integrations. The [contributing guide](CONTRIBUTING.md) covers the development setup, the project conventions and the pull request checklist.
 
-- **Found a bug?** Open a [bug report](https://github.com/azevedo1z/lgpder/issues/new?template=bug_report.yml).
-- **Have an idea?** Open a [feature request](https://github.com/azevedo1z/lgpder/issues/new?template=feature_request.yml). The [known limitations](#known-limitations) are a good starting point.
+- **Found a bug?** Open a [bug report](https://github.com/azevedo1z/LGPDer/issues/new?template=bug_report.yml).
+- **Have an idea?** Open a [feature request](https://github.com/azevedo1z/LGPDer/issues/new?template=feature_request.yml). The [known limitations](#known-limitations) are a good starting point.
 - **Found a security issue?** Do not open a public issue; follow the [security policy](SECURITY.md).
 
 ## License

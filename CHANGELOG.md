@@ -23,5 +23,5 @@ Initial release: a consent manager for the Brazilian LGPD, published as one ESM 
 
 - Strict Content Security Policies are supported. The CSP hash of `consentDefaultSnippet` is `'sha256-bwiEGrWus2Rs6F3b0yuALxS0J1DFbgWl4lLMtYRMl7E='`, and the hash of the style sheet of the components is `'sha256-4ydU48/z3O6bG7Uy7CrY8iBC4yxZjQd3PBxuXb7XpV4='`. Both change only in a release that says so in this file.
 
-[Unreleased]: https://github.com/azevedo1z/lgpder/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/azevedo1z/lgpder/releases/tag/v0.1.0
+[Unreleased]: https://github.com/azevedo1z/LGPDer/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/azevedo1z/LGPDer/releases/tag/v0.1.0
