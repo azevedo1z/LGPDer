@@ -73,6 +73,20 @@ docs: clarify the Next.js recipe
 
 Common types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`. Use the subpath as the scope when the change belongs to one.
 
+## Releasing
+
+For maintainers. The [CHANGELOG](CHANGELOG.md) is the only place where release notes are written; the GitHub Release is generated from it.
+
+1. In `CHANGELOG.md`, move the entries of `[Unreleased]` to a new `## [X.Y.Z] - YYYY-MM-DD` section and update the comparison links at the end of the file.
+2. Commit the CHANGELOG, then bump the version, which commits `package.json` and creates the annotated tag `vX.Y.Z`:
+
+   ```sh
+   npm version minor   # or patch, or major
+   git push --follow-tags
+   ```
+
+3. The push of the tag runs the [release workflow](.github/workflows/release.yml): it checks that the tag matches `package.json`, publishes to npm with provenance and creates the GitHub Release with the section of the CHANGELOG for that version.
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
