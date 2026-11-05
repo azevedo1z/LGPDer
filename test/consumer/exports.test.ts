@@ -6,6 +6,7 @@ import { connectEvidence } from 'lgpder/evidence';
 import { connectGoogle, consentDefaultSnippet } from 'lgpder/google';
 import { connectScripts } from 'lgpder/scripts';
 import { connectStorage } from 'lgpder/storage';
+import { createPlaceholder, mountUi, ptBR } from 'lgpder/ui';
 
 /** 2026-10-31T12:00:00.000Z. */
 const INSTANT = 1_793_448_000_000;
@@ -143,6 +144,29 @@ describe('compiled package, imported by the name lgpder/evidence', () => {
     assert.throws(() => connectEvidence(consent, { endpoint: 'http://a.test/' }), {
       name: 'TypeError',
       message: '[lgpder] "endpoint" must be an HTTPS URL, or HTTP on localhost.',
+    });
+  });
+});
+
+describe('compiled package, imported by the name lgpder/ui', () => {
+  it('the runtime exports are createPlaceholder, mountUi and ptBR', async () => {
+    const exported = await import('lgpder/ui');
+
+    assert.deepStrictEqual(Object.keys(exported), ['createPlaceholder', 'mountUi', 'ptBR']);
+    assert.equal(ptBR.lang, 'pt-BR');
+  });
+
+  it('on the server, without document, validates and mounts an inert handle', () => {
+    const consent = createConsentManager({ purposes: { ads: {} }, now: () => INSTANT });
+    const ui = mountUi(consent, { purposes: { ads: { title: 'Publicidade' } } });
+
+    ui.openPreferences(['ads']);
+    ui.destroy();
+
+    assert.equal(typeof createPlaceholder(consent), 'function');
+    assert.throws(() => mountUi(consent, { texts: { banner: { title: '' } } }), {
+      name: 'TypeError',
+      message: '[lgpder] "texts.banner.title" must be a non-empty string.',
     });
   });
 });

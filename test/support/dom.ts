@@ -90,6 +90,23 @@ export const testDom: TestDom = Object.freeze({
   navigate,
 });
 
+/**
+ * Makes `document.readyState` read `'loading'` until {@link finishLoading}, as when a layer is
+ * connected by a script in the `<head>`.
+ */
+export function startLoading(): void {
+  Object.defineProperty(window.document, 'readyState', {
+    configurable: true,
+    get: () => 'loading',
+  });
+}
+
+/** Ends the state set by {@link startLoading} and fires `DOMContentLoaded`. */
+export function finishLoading(): void {
+  Reflect.deleteProperty(window.document, 'readyState');
+  window.document.dispatchEvent(new window.Event('DOMContentLoaded'));
+}
+
 // `document.readyState` becomes 'complete' only after the load event.
 if (window.document.readyState !== 'complete') {
   await new Promise((resolve) => {

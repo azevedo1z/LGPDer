@@ -79,20 +79,6 @@ export async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();
 }
 
-/**
- * Makes `document.readyState` read `'loading'` until {@link finishLoading}, as when the layer is
- * connected by a script in the `<head>`.
- */
-export function startLoading(): void {
-  Object.defineProperty(document, 'readyState', { configurable: true, get: () => 'loading' });
-}
-
-/** Ends the state set by {@link startLoading} and fires `DOMContentLoaded`. */
-export function finishLoading(): void {
-  Reflect.deleteProperty(document, 'readyState');
-  document.dispatchEvent(new testDom.window.Event('DOMContentLoaded'));
-}
-
 /** Records every text assigned to `document.cookie` during `act`, without changing the effect. */
 export function cookieWrites(act: () => void): string[] {
   const { Document } = testDom.window;

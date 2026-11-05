@@ -2,16 +2,8 @@
 import assert from 'node:assert/strict';
 import { afterEach, describe, it } from 'node:test';
 
-import { testDom } from '../support/dom.ts';
-import {
-  closePages,
-  find,
-  findAll,
-  finishLoading,
-  openPage,
-  render,
-  startLoading,
-} from '../support/page.ts';
+import { finishLoading, startLoading, testDom } from '../support/dom.ts';
+import { closePages, find, findAll, openPage, render } from '../support/page.ts';
 import { decisionOf, serialized } from '../support/records.ts';
 import { withObjectPollution } from '../support/setup.ts';
 
