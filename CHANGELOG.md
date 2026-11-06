@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-06
+
+New default look of the components. Sites with a strict Content Security Policy must update the hash of the style sheet.
+
 ### Changed
 
 - **Components (`lgpder/ui`).** Simpler default look: every button is neutral, so the three of the banner and the two of the placeholder keep the same emphasis, and only "Salvar" is filled, through the new part `primary`; the purposes of the banner are one line of text, still announced as a list (`role="list"`, which Safari drops from a list without markers); the badge of `individualGrant` is text in the primary color; the placeholder is flat, without shadow; softer shadow and wider spacing. The banner is at most 720 px wide, 16 px from the edges. Shorter built-in descriptions of the banner and the preferences center. The CSP hash of the style sheet is now `'sha256-mvpoZq4WdXgcqMPCdPI6MD+hbhM2LBUpVtszzwf1nNU='` (see [ui.md](docs/ui.md#content-security-policy)).
@@ -39,6 +43,7 @@ Initial release: a consent manager for the Brazilian LGPD, published as one ESM 
 
 - Strict Content Security Policies are supported. The CSP hash of `consentDefaultSnippet` is `'sha256-bwiEGrWus2Rs6F3b0yuALxS0J1DFbgWl4lLMtYRMl7E='`, and the hash of the style sheet of the components is `'sha256-4ydU48/z3O6bG7Uy7CrY8iBC4yxZjQd3PBxuXb7XpV4='`. Both change only in a release that says so in this file.
 
-[Unreleased]: https://github.com/azevedo1z/LGPDer/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/azevedo1z/LGPDer/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/azevedo1z/LGPDer/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/azevedo1z/LGPDer/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/azevedo1z/LGPDer/releases/tag/v0.1.0
