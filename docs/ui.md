@@ -262,28 +262,28 @@ The components isolate their style in the shadow root (`all: initial` on the hos
 
 **CSS custom properties**, set on any ancestor, such as `:root`:
 
-| Property                      | Default                     | Use                                                      |
-| ----------------------------- | --------------------------- | -------------------------------------------------------- |
-| `--lgpder-font-family`        | `system-ui, sans-serif`     | font of every component                                  |
-| `--lgpder-color-background`   | `#ffffff`                   | background of the banner, the dialog and the placeholder |
-| `--lgpder-color-text`         | `#1f2328`                   | text                                                     |
-| `--lgpder-color-muted`        | `#57606a`                   | descriptions, and the border of a switch that is off     |
-| `--lgpder-color-primary`      | `#0b57d0`                   | buttons, a switch that is on, the badge                  |
-| `--lgpder-color-primary-text` | `#ffffff`                   | text on the primary color                                |
-| `--lgpder-color-border`       | `#d0d7de`                   | decorative borders                                       |
-| `--lgpder-color-focus`        | `#0b57d0`                   | focus outline                                            |
-| `--lgpder-radius`             | `8px`                       | corner radius                                            |
-| `--lgpder-z-index`            | `2147483000`                | stacking of the banner, the center and the button        |
-| `--lgpder-shadow`             | `0 4px 24px rgba(0,0,0,.2)` | shadow of the banner, the dialog and the placeholder     |
+| Property                      | Default                 | Use                                                      |
+| ----------------------------- | ----------------------- | -------------------------------------------------------- |
+| `--lgpder-font-family`        | `system-ui, sans-serif` | font of every component                                  |
+| `--lgpder-color-background`   | `#ffffff`               | background of the banner, the dialog and the placeholder |
+| `--lgpder-color-text`         | `#1f2328`               | text                                                     |
+| `--lgpder-color-muted`        | `#57606a`               | descriptions, and the border of a switch that is off     |
+| `--lgpder-color-primary`      | `#0b57d0`               | the save button, a switch that is on, the badge          |
+| `--lgpder-color-primary-text` | `#ffffff`               | text on the primary color                                |
+| `--lgpder-color-border`       | `#d0d7de`               | decorative borders                                       |
+| `--lgpder-color-focus`        | `#0b57d0`               | focus outline                                            |
+| `--lgpder-radius`             | `8px`                   | corner radius                                            |
+| `--lgpder-z-index`            | `2147483000`            | stacking of the banner, the center and the button        |
+| `--lgpder-shadow`             | soft, two layers        | shadow of the banner, the dialog and the floating button |
 
 **`::part()`**, to style an element inside a component:
 
-| Component            | Parts                                                                                                                                                                                                                       |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lgpder-banner`      | `banner`, `title`, `description`, `purposes`, `purpose`, `actions`, `button`                                                                                                                                                |
-| `lgpder-preferences` | `backdrop`, `dialog`, `title`, `description`, `necessary`, `necessary-title`, `category`, `category-title`, `purpose`, `individual`, `purpose-title`, `badge`, `purpose-description`, `switch`, `footer`, `button`, `close` |
-| `lgpder-button`      | `button`                                                                                                                                                                                                                    |
-| `lgpder-placeholder` | `placeholder`, `description`, `actions`, `button`                                                                                                                                                                           |
+| Component            | Parts                                                                                                                                                                                                                                  |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lgpder-banner`      | `banner`, `title`, `description`, `purposes`, `purpose`, `actions`, `button`                                                                                                                                                           |
+| `lgpder-preferences` | `backdrop`, `dialog`, `title`, `description`, `necessary`, `necessary-title`, `category`, `category-title`, `purpose`, `individual`, `purpose-title`, `badge`, `purpose-description`, `switch`, `footer`, `button`, `close`, `primary` |
+| `lgpder-button`      | `button`                                                                                                                                                                                                                               |
+| `lgpder-placeholder` | `placeholder`, `description`, `actions`, `button`                                                                                                                                                                                      |
 
 ```css
 :root {
@@ -322,7 +322,7 @@ The test suite runs axe-core on each component (banner, full center with categor
 Each component has a `<style>` element in its shadow root, which a policy without `'unsafe-inline'` in `style-src` blocks unless it allows its hash. The hash of the style sheet of this version is:
 
 ```text
-'sha256-4ydU48/z3O6bG7Uy7CrY8iBC4yxZjQd3PBxuXb7XpV4='
+'sha256-mvpoZq4WdXgcqMPCdPI6MD+hbhM2LBUpVtszzwf1nNU='
 ```
 
 It changes whenever the style sheet changes; the [CHANGELOG](../CHANGELOG.md) says when. The components set no nonce on it. The sizes of the placeholder and the `scroll-padding-bottom` of the root are set through the CSSOM (`style.setProperty`), which CSP does not restrict.

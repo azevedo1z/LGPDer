@@ -94,7 +94,7 @@ export function createPreferences(
   });
   shadowRoot.append(h('div', { part: 'backdrop' }, dialog));
   const switches = new Map<string, HTMLButtonElement>();
-  const save = button('button', preferences.save, handlers.save);
+  const save = button('button primary', preferences.save, handlers.save);
 
   const focusFirst = (): void => {
     dialog.querySelector('button')?.focus();

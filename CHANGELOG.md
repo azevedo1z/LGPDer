@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Changed
+
+- **Components (`lgpder/ui`).** Simpler default look: every button is neutral, so the three of the banner and the two of the placeholder keep the same emphasis, and only "Salvar" is filled, through the new part `primary`; the purposes of the banner are one line of text, still announced as a list (`role="list"`, which Safari drops from a list without markers); the badge of `individualGrant` is text in the primary color; the placeholder is flat, without shadow; softer shadow and wider spacing. The banner is at most 720 px wide, 16 px from the edges. Shorter built-in descriptions of the banner and the preferences center. The CSP hash of the style sheet is now `'sha256-mvpoZq4WdXgcqMPCdPI6MD+hbhM2LBUpVtszzwf1nNU='` (see [ui.md](docs/ui.md#content-security-policy)).
+
 ## [0.1.1] - 2026-11-05
 
 Documentation only: no change to the code or to the API.

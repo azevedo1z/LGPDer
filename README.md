@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript&logoColor=white" alt="TypeScript 6.0"/>
   <img src="https://img.shields.io/badge/runtime%20dependencies-0-brightgreen" alt="Zero runtime dependencies"/>
   <img src="https://img.shields.io/badge/ESM-only-F7DF1E?logo=javascript&logoColor=black" alt="ESM only"/>
-  <img src="https://img.shields.io/badge/gzip-core%202.3%20kB%20%7C%20all%2014.1%20kB-blue" alt="Size: core 2.3 kB, all subpaths 14.1 kB gzip"/>
+  <img src="https://img.shields.io/badge/gzip-core%202.3%20kB%20%7C%20all%2014.3%20kB-blue" alt="Size: core 2.3 kB, all subpaths 14.3 kB gzip"/>
   <img src="https://img.shields.io/badge/coverage-100%25-brightgreen" alt="Coverage: 100% of lines"/>
 </p>
 
