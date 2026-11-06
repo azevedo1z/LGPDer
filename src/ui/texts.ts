@@ -62,7 +62,7 @@ export const ptBR: UiTexts = Object.freeze({
   banner: Object.freeze({
     title: 'Sua privacidade',
     description:
-      'Usamos cookies e tecnologias semelhantes para as finalidades abaixo somente com o seu consentimento. Você pode aceitar todas, rejeitar todas ou escolher por finalidade, e mudar de ideia quando quiser.',
+      'Usamos cookies e tecnologias semelhantes para as finalidades abaixo somente com o seu consentimento, que você pode mudar ou retirar quando quiser.',
     acceptAll: 'Aceitar todas',
     rejectAll: 'Rejeitar todas',
     customize: 'Personalizar',
@@ -70,7 +70,7 @@ export const ptBR: UiTexts = Object.freeze({
   preferences: Object.freeze({
     title: 'Preferências de privacidade',
     description:
-      'Escolha, para cada finalidade, se você consente. Você pode alterar suas escolhas a qualquer momento.',
+      'Escolha as finalidades com que você consente. Você pode mudar suas escolhas quando quiser.',
     save: 'Salvar',
     saveAndReload: 'Salvar e recarregar',
     close: 'Fechar',

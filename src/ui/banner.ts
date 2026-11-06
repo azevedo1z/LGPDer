@@ -36,7 +36,11 @@ export function createBanner(
       h('h2', { part: 'title', id: 'title' }, banner.title),
       h('p', { part: 'description', id: 'description' }, banner.description),
       ids.length > 0 &&
-        h('ul', { part: 'purposes' }, ...ids.map((id) => h('li', { part: 'purpose' }, title(id)))),
+        h(
+          'ul',
+          { part: 'purposes', role: 'list' },
+          ...ids.map((id) => h('li', { part: 'purpose' }, title(id))),
+        ),
       // Same part, same style and this order for the three: none is nudged (ANPD guidance).
       h(
         'div',

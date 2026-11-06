@@ -177,6 +177,13 @@ describe('the content of the banner', () => {
     ]);
   });
 
+  it('keeps the list role of the purposes, which Safari drops from a list without markers', () => {
+    openUi();
+
+    const purposes = host('lgpder-banner').shadowRoot?.querySelector('[part~="purposes"]');
+    assert.equal(purposes?.getAttribute('role'), 'list');
+  });
+
   it('is a region labelled by its title', () => {
     openUi();
 
