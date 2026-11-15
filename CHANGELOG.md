@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-15
+
+Security and bug fixes of the scripts layer, and a correction of the guides. No change to the API.
+
 ### Fixed
 
 - **Scripts (`lgpder/scripts`).** A blocked iframe removed from the document while its placeholder was shown, then inserted again and scanned, stayed with the `hidden` attribute after being loaded. The placeholder of a removed iframe is now removed as on a grant, giving the iframe back the `hidden` written by its author.
@@ -53,7 +57,8 @@ Initial release: a consent manager for the Brazilian LGPD, published as one ESM 
 
 - Strict Content Security Policies are supported. The CSP hash of `consentDefaultSnippet` is `'sha256-bwiEGrWus2Rs6F3b0yuALxS0J1DFbgWl4lLMtYRMl7E='`, and the hash of the style sheet of the components is `'sha256-4ydU48/z3O6bG7Uy7CrY8iBC4yxZjQd3PBxuXb7XpV4='`. Both change only in a release that says so in this file.
 
-[Unreleased]: https://github.com/azevedo1z/LGPDer/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/azevedo1z/LGPDer/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/azevedo1z/LGPDer/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/azevedo1z/LGPDer/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/azevedo1z/LGPDer/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/azevedo1z/LGPDer/releases/tag/v0.1.0
