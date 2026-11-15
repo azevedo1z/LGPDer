@@ -249,6 +249,102 @@ describe('load() of the placeholder', () => {
   });
 });
 
+describe('an iframe whose data-src is a javascript: address', () => {
+  const SCRIPT_ADDRESSES = ['javascript:alert(1)', '  JaVaScRiPt:alert(1)', 'java	script:alert(1)'];
+
+  /** An iframe of `ads` whose data-src is `address`. */
+  function iframeOf(address: string): string {
+    return `<iframe data-consent="ads" data-src="${address}"></iframe>`;
+  }
+
+  for (const address of SCRIPT_ADDRESSES) {
+    it(`stays blocked on a grant, and nothing is thrown: ${JSON.stringify(address)}`, (t) => {
+      const scheduled = captureMicrotasks(t);
+      render(iframeOf(address));
+      const { consent } = openPage();
+
+      consent.decide({ ads: 'granted' });
+
+      const iframe = find('iframe');
+      assert.equal(iframe.hasAttribute('src'), false);
+      assert.equal(iframe.hasAttribute('data-consent-active'), false);
+      assert.deepStrictEqual(scheduled, []);
+    });
+
+    it(`gets no placeholder: ${JSON.stringify(address)}`, () => {
+      render(iframeOf(address));
+      const renderer = recordingRenderer();
+
+      openPage({ renderPlaceholder: renderer.render });
+
+      assert.deepStrictEqual(renderer.contexts, []);
+      assert.deepStrictEqual(placeholders(), []);
+      assert.equal(find('iframe').hasAttribute('hidden'), false);
+    });
+  }
+
+  it('is refused by load() when data-src changed after the placeholder was shown', () => {
+    render(IFRAME);
+    const renderer = recordingRenderer();
+    const { scripts } = openPage({ renderPlaceholder: renderer.render });
+    const iframe = find('iframe');
+    iframe.setAttribute('data-src', 'javascript:alert(1)');
+
+    renderer.contexts[0]?.load();
+
+    assert.equal(iframe.hasAttribute('src'), false);
+    assert.equal(iframe.hasAttribute('data-consent-active'), false);
+    assert.equal(iframe.hasAttribute('hidden'), false);
+    assert.deepStrictEqual(placeholders(), [], 'no placeholder whose buttons do nothing');
+    // Still blocked, neither active nor loaded: once corrected, it gets a placeholder again.
+    iframe.setAttribute('data-src', VIDEO);
+    scripts.scan();
+    assert.equal(iframe.hasAttribute('src'), false);
+    assert.equal(iframe.previousElementSibling, placeholders()[0]);
+    assert.equal(renderer.contexts.length, 2);
+  });
+
+  it('loads once the author corrects data-src and scan() runs', () => {
+    render(iframeOf('javascript:alert(1)'));
+    const { consent, scripts } = openPage({ renderPlaceholder: recordingRenderer().render });
+    consent.decide({ ads: 'granted' });
+    const iframe = find('iframe');
+    iframe.setAttribute('data-src', VIDEO);
+
+    scripts.scan();
+
+    assert.equal(iframe.getAttribute('src'), VIDEO);
+    assert.ok(iframe.hasAttribute('data-consent-active'));
+  });
+
+  const STILL_LOADED: readonly {
+    readonly case: string;
+    readonly tag: string;
+    readonly src: string;
+  }[] = [
+    { case: 'a data: iframe', tag: 'iframe', src: 'data:text/html,<p>hello</p>' },
+    { case: 'a blob: iframe', tag: 'iframe', src: 'blob:https://www.example.com.br/0a1b2c3d' },
+    { case: 'a data: image', tag: 'img', src: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' },
+    { case: 'a javascript: image', tag: 'img', src: 'javascript:alert(1)' },
+    { case: 'an iframe with an address that does not parse', tag: 'iframe', src: 'https://' },
+  ];
+
+  for (const { case: label, tag, src } of STILL_LOADED) {
+    it(`${label} is loaded as before`, () => {
+      const element = document.createElement(tag);
+      element.setAttribute('data-consent', 'ads');
+      element.setAttribute('data-src', src);
+      document.body.replaceChildren(element);
+      const { consent } = openPage();
+
+      consent.decide({ ads: 'granted' });
+
+      assert.equal(element.getAttribute('src'), src);
+      assert.ok(element.hasAttribute('data-consent-active'));
+    });
+  }
+});
+
 describe('revocation and a new grant', () => {
   it('a revocation swaps the iframe for a blocked copy and shows the placeholder again', () => {
     render(IFRAME);

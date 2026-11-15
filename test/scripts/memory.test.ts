@@ -62,6 +62,21 @@ describe('a removed element', () => {
     assert.equal(iframe.getAttribute('src'), 'https://video.example/embed');
   });
 
+  it('inserted again after its placeholder was shown, is visible once loaded', () => {
+    render(IFRAME);
+    const { consent, scripts } = openPage({ renderPlaceholder: recordingRenderer().render });
+    const iframe = find('iframe');
+    iframe.remove();
+    scripts.scan();
+    document.body.append(iframe);
+    scripts.scan();
+
+    consent.decide({ ads: 'granted' });
+
+    assert.equal(iframe.getAttribute('src'), 'https://video.example/embed');
+    assert.equal(iframe.hasAttribute('hidden'), false);
+  });
+
   it('a removed blocked script is not activated by a later grant', () => {
     render('<script type="text/plain" data-consent="ads">ads();</script>');
     const { consent } = openPage();

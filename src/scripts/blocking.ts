@@ -126,13 +126,41 @@ export function activateScript(entry: ScriptEntry): void {
   original.replaceWith(script);
 }
 
-/** Loads the iframe or image from its `data-src` and removes its placeholder. */
-export function loadEmbed(entry: EmbedEntry): void {
+/**
+ * Whether `element` is an iframe whose `data-src` resolves to a `javascript:` address, which the
+ * browser would run as code of the page. Only this scheme, and only on iframes: every other address
+ * is loadable, also one that does not parse, since a `javascript:` address always parses.
+ */
+export function hasScriptAddress(element: Element): boolean {
+  if (element.localName !== 'iframe') return false;
+  const src = element.getAttribute('data-src');
+  if (src === null) return false;
+  try {
+    // The parser drops what the browser drops: leading spaces, tabs and line breaks, and the case.
+    return new URL(src, element.baseURI).protocol === 'javascript:';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Loads the iframe or image from its `data-src` and removes its placeholder. An iframe with a
+ * `javascript:` address is refused: it stays blocked, without a placeholder, and is rendered again
+ * once its address is corrected.
+ *
+ * @returns Whether it was loaded.
+ */
+export function loadEmbed(entry: EmbedEntry): boolean {
   removePlaceholder(entry);
+  if (hasScriptAddress(entry.node)) {
+    entry.rendered = false;
+    return false;
+  }
   const src = entry.node.getAttribute('data-src');
   if (src !== null) entry.node.setAttribute('src', src);
   entry.node.setAttribute(ACTIVE, '');
   entry.active = true;
+  return true;
 }
 
 /**

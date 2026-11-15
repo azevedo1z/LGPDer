@@ -56,7 +56,7 @@ const scripts = connectScripts(consent, {
 Every element is marked with `data-consent`, which lists one or more purposes separated by spaces. An element is activated only when **every** purpose it names is configured and granted. An empty `data-consent`, one with only spaces or one that names a purpose not configured is never activated (a polluted `Object.prototype` does not count as a purpose); with `debug`, the console says why.
 
 - `<script type="text/plain" data-consent="..." [data-src="..."]>`, inline or external. On activation, a real `<script>` replaces it, with the other attributes (all but `type`, `data-src` and `async`), the `nonce`, `src` from `data-src` or else the inline content, and `async = false`, so external scripts keep the document order. An activated script is never run again on this page, also after a revocation and a new grant. Module scripts are out of scope in this version: there is no `data-type`, and a `type="module"` script is not blocked.
-- `<iframe data-consent="..." data-src="...">`: without `src` until loaded. While blocked, it shows the placeholder of `renderPlaceholder`. A revocation blocks it again.
+- `<iframe data-consent="..." data-src="...">`: without `src` until loaded. While blocked, it shows the placeholder of `renderPlaceholder`. A revocation blocks it again. An iframe whose `data-src` is a `javascript:` address is never loaded, since the browser would run that address as code of the page: it stays blocked, without `src`, without `data-consent-active` and without a placeholder, on a grant and on `load()` alike. The address is resolved as the browser resolves it (leading spaces, tabs, line breaks and the case are ignored) and checked again on each scan and reconciliation, so a corrected `data-src` loads on the next `scan`. Only this scheme and only iframes are refused: `data:`, `blob:`, relative addresses, the schemes of an application (`file:`, `capacitor:`, `chrome-extension:`) and every address of an `<img>` load as written.
 - `<img data-consent="..." data-src="...">`: for tracking pixels. Loaded on a grant and blocked again on a revocation.
 
 Activated elements get the `data-consent-active` attribute, read by a later instance on the same page (React StrictMode, hot reload, a `destroy` followed by a new `init`), so it knows which code is running. An iframe or image found with `src`, `srcset` or `data-consent-active` while its purposes are not all granted (an error of the author, or an earlier instance) is replaced by a blocked copy, with a `debug` warning. Removing `src` does not unload the content in every browser, so blocking an iframe or image again replaces it with a copy of its blocked state.
@@ -200,7 +200,7 @@ export type PlaceholderRenderer<P extends string = string> = (
 ) => Element;
 ```
 
-With `renderPlaceholder`, the renderer is called once each time an iframe with a valid `data-consent` becomes blocked; the element it returns is inserted before the iframe, which is hidden meanwhile. `context.element` is the blocked iframe, `context.purposes` its purposes in attribute order (frozen, without repetition), and `context.load()` loads this iframe only, on this page, **without recording a decision**. `load()` does nothing after `destroy`, with a reload scheduled or when the iframe is no longer blocked. A renderer that throws, or returns something other than an element, inserts nothing, and its error is rethrown in a microtask; the iframe stays as the author wrote it.
+With `renderPlaceholder`, the renderer is called once each time an iframe with a valid `data-consent` becomes blocked; the element it returns is inserted before the iframe, which is hidden meanwhile. `context.element` is the blocked iframe, `context.purposes` its purposes in attribute order (frozen, without repetition), and `context.load()` loads this iframe only, on this page, **without recording a decision**. `load()` does nothing after `destroy`, with a reload scheduled or when the iframe is no longer blocked. An iframe with a `javascript:` `data-src` gets no placeholder, so there is never one whose buttons do nothing; if the address becomes `javascript:` after the placeholder was shown, `load()` and a grant remove the placeholder and load nothing, and the renderer is called again once the address is corrected and the iframe scanned. A renderer that throws, or returns something other than an element, inserts nothing, and its error is rethrown in a microtask; the iframe stays as the author wrote it.
 
 [`createPlaceholder`](ui.md#createplaceholderconsent-options) of `lgpder/ui` is a ready renderer, with "Carregar" (`load()`) and "Permitir sempre" (grants the purposes of the iframe). A headless application writes its own:
 
@@ -255,6 +255,7 @@ With `debug: true`, the layer warns in the console, once per element and only un
 - about scripts with `data-consent` but without `type="text/plain"`, which the browser runs anyway (including `type="module"`);
 - about a `data-consent` that names an unknown purpose or none;
 - about an iframe or image loaded before consent, blocked again;
+- about an iframe with a `javascript:` `data-src`, which stays blocked;
 - about a revocation that left code running in the `'manual'` mode, and a reload skipped by `canReload`.
 
 It only warns: nothing is blocked because of `debug`.
@@ -296,5 +297,6 @@ Warnings of `debug` (`console.warn`):
 | `data-consent` on a script without `type="text/plain"` | `[lgpder] data-consent="{purposes}" is on a script without type="text/plain"; it runs without consent.` |
 | `data-consent` with an unknown purpose or none         | `[lgpder] data-consent="{purposes}" names an unknown purpose or none; it stays blocked.`                |
 | iframe or image loaded before consent                  | `[lgpder] data-consent="{purposes}" was loaded before consent; it is blocked again.`                    |
+| iframe with a `javascript:` `data-src`                 | `[lgpder] data-consent="{purposes}" has a javascript: data-src; it stays blocked.`                      |
 | `'manual'` revocation that left code running           | `[lgpder] Revoked purposes left code running until a reload: {purposes}.`                               |
 | reload refused by `canReload`                          | `[lgpder] Reload skipped: the revocation is not known to be saved.`                                     |

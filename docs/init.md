@@ -85,20 +85,20 @@ export interface InitOptions<P extends string = string, C extends string = strin
 
 The types come from the layers, so the options of `init` never drift from them. The options, `purposes` and each purpose are copied to null-prototype objects before anything is read, so a value planted on a polluted prototype (an `endpoint` of another site, `revocation: 'manual'`, `floatingButton: false`) is never read; unknown keys are refused.
 
-| Option           | Goes to         | Meaning                                                                                                               |
-| ---------------- | --------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `purposes`       | all             | the purposes, in the order they are shown; at least one ([`InitPurpose`](#initpurpose))                               |
-| `storage`        | storage         | `'localStorage'` (default), `'cookie'` or a [`StorageAdapter`](storage.md#storageadapter); the key is always `lgpder` |
-| `maxAge`, `now`  | core            | maximum age of a decision (default: 365 days) and clock (default: start of the UTC day)                               |
-| `revocation`     | scripts         | `'reload'` (default) or `'manual'` (see [Revocation](scripts.md#revocation))                                          |
-| `onRevoke`       | scripts         | called on every revocation, in both modes                                                                             |
-| `debug`          | scripts, google | warnings in the console about content not blocked as expected and a missing Consent Mode default                      |
-| `endpoint`       | evidence        | endpoint of the application that receives the evidence of each decision; nothing is sent without it                   |
-| `onDecision`     | evidence        | called on each decision of the data subject                                                                           |
-| `onError`        | evidence        | called when sending the evidence fails; requires `endpoint` or `onDecision`                                           |
-| `texts`          | ui              | texts merged over the built-in Brazilian Portuguese (see [Texts and languages](ui.md#texts-and-languages))            |
-| `necessary`      | ui              | texts of the section of the necessary cookies, the same as `texts.necessary`; giving both is refused                  |
-| `floatingButton` | ui              | whether to show the floating button (default: `true`); hide it only with another access to the preferences            |
+| Option           | Goes to         | Meaning                                                                                                                                                                                                                   |
+| ---------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `purposes`       | all             | the purposes, in the order they are shown; at least one ([`InitPurpose`](#initpurpose))                                                                                                                                   |
+| `storage`        | storage         | `'localStorage'` (default), `'cookie'` or a [`StorageAdapter`](storage.md#storageadapter); the key is always `lgpder`, and an adapter may name its own cookie (see [The cookie of the record](#the-cookie-of-the-record)) |
+| `maxAge`, `now`  | core            | maximum age of a decision (default: 365 days) and clock (default: start of the UTC day)                                                                                                                                   |
+| `revocation`     | scripts         | `'reload'` (default) or `'manual'` (see [Revocation](scripts.md#revocation))                                                                                                                                              |
+| `onRevoke`       | scripts         | called on every revocation, in both modes                                                                                                                                                                                 |
+| `debug`          | scripts, google | warnings in the console about content not blocked as expected and a missing Consent Mode default                                                                                                                          |
+| `endpoint`       | evidence        | endpoint of the application that receives the evidence of each decision; nothing is sent without it                                                                                                                       |
+| `onDecision`     | evidence        | called on each decision of the data subject                                                                                                                                                                               |
+| `onError`        | evidence        | called when sending the evidence fails; requires `endpoint` or `onDecision`                                                                                                                                               |
+| `texts`          | ui              | texts merged over the built-in Brazilian Portuguese (see [Texts and languages](ui.md#texts-and-languages))                                                                                                                |
+| `necessary`      | ui              | texts of the section of the necessary cookies, the same as `texts.necessary`; giving both is refused                                                                                                                      |
+| `floatingButton` | ui              | whether to show the floating button (default: `true`); hide it only with another access to the preferences                                                                                                                |
 
 `record` is refused: the first sync of the storage would replace it right away. Adopt an external record, such as the one of the backend, with [`app.adopt`](#consentapp).
 
@@ -125,6 +125,32 @@ Each purpose takes, together, the keys of every layer, and `init` hands each par
 | `consentMode`     | google          | Consent Mode types controlled by the purpose, besides the ones of its integrations                   |
 
 With `storage: 'cookie'`, a cookie pattern that matches `lgpder` (`'lgpder'`, `'lg*'` and so on) is refused, since removing the cookie of the record on a revocation would lose the decision just saved.
+
+## The cookie of the record
+
+With `storage: 'cookie'`, the record is saved in the cookie `lgpder`. To save it under another name, such as `__Host-lgpder` (see [Cookie](storage.md#cookie)), give `init` a [`cookieAdapter`](storage.md#cookieadapteroptions) with that name:
+
+```ts
+import { init } from 'lgpder/init';
+import { cookieAdapter } from 'lgpder/storage';
+
+const maxAge = 365 * 24 * 60 * 60 * 1000; // the default of the manager, in milliseconds
+
+const app = init({
+  purposes: { analytics: { integrations: ['google-analytics'] } },
+  maxAge,
+  storage: cookieAdapter({ key: '__Host-lgpder', maxAge }),
+});
+```
+
+The record is then saved in `__Host-lgpder`, no cookie `lgpder` is written, the record saved by a previous page is adopted and the other tabs are followed. What changes from `storage: 'cookie'`:
+
+- **`maxAge`.** The adapter does not inherit the `maxAge` of the manager: give both the same value, as above, or the cookie expires before or after the decisions it holds.
+- **Other tabs.** The `BroadcastChannel` stays `lgpder:lgpder`, since the key of `init` is always `lgpder`; only the cookie is renamed.
+- **Cookie patterns.** `init` cannot know the cookie name of an adapter, so no cookie pattern of a purpose is refused: a pattern that matches the cookie of the record, such as `'__Host-*'`, would delete the record whenever that purpose is not granted. Keep the patterns of the purposes away from that name.
+- **Renaming on a live site.** The records already saved stay in `lgpder`, which nothing reads or removes anymore: every data subject is asked again, and the old cookie lasts until it expires.
+- **Plain HTTP.** The adapter adds `Secure` only on HTTPS, and the browser refuses a `__Host-` cookie without it, so on plain HTTP, as in local development, nothing is saved and every page asks again. Choose the name by the scheme: `key: location.protocol === 'https:' ? '__Host-lgpder' : 'lgpder'`. In a module that is also evaluated on the server, where there is no `location`, check `typeof location !== 'undefined'` first; the adapter is not used there.
+- **Server.** Code that reads the cookie on the server, such as the one of [SSR, Next.js and React](ssr-react.md), must read the same name.
 
 ## `ConsentApp`
 
