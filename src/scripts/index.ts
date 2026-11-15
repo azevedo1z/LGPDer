@@ -527,7 +527,7 @@ export function connectScripts(consent: ConsentManager, options?: unknown): Cons
     known = known.filter((entry) => {
       if (entry.node.isConnected) return entry.kind === 'embed' || !entry.active;
       states.delete(entry.node);
-      if (entry.kind === 'embed') entry.placeholder?.remove();
+      if (entry.kind === 'embed') removePlaceholder(entry);
       return false;
     });
   };
