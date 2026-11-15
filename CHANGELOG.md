@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Fixed
+
+- **Scripts (`lgpder/scripts`).** A blocked iframe removed from the document while its placeholder was shown, then inserted again and scanned, stayed with the `hidden` attribute after being loaded. The placeholder of a removed iframe is now removed as on a grant, giving the iframe back the `hidden` written by its author.
+- **Documentation.** The guides said that `init` cannot save the record in a `__Host-` cookie. It can: `init({ storage: cookieAdapter({ key: '__Host-lgpder', maxAge }) })`. The recipe and its caveats are in [init.md](docs/init.md#the-cookie-of-the-record).
+
+### Security
+
+- **Scripts (`lgpder/scripts`).** An `<iframe data-consent>` whose `data-src` is a `javascript:` address is no longer loaded, on a grant or by `load()` of its placeholder: the browser would run that address as code of the page. It stays blocked, without a placeholder, with a `debug` warning, and loads once the address is corrected and scanned. Only this scheme and only iframes are refused; every other address, and every address of an image, loads as before. See [scripts.md](docs/scripts.md#blocked-elements).
+- **CI.** The actions of the workflows are pinned by commit instead of by tag, and Dependabot proposes their updates every week.
+
 ## [0.1.2] - 2026-11-06
 
 New default look of the components. Sites with a strict Content Security Policy must update the hash of the style sheet.
