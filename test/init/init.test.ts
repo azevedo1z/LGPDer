@@ -11,6 +11,7 @@ import type { InitOptions } from 'lgpder/init';
 import type { RevokeEvent } from 'lgpder/scripts';
 
 import { init } from '../../src/init/index.ts';
+import { cookieAdapter } from '../../src/storage/index.ts';
 import { captureWarnings } from '../support/capture.ts';
 import { finishLoading, startLoading, testDom, writeFromAnotherTab } from '../support/dom.ts';
 import { ENDPOINT, installNetwork } from '../support/evidence.ts';
@@ -39,6 +40,7 @@ import { createMemoryAdapter } from '../support/memory-adapter.ts';
 import { cookieNames, flushMicrotasks } from '../support/page.ts';
 import { decisionOf, serialized } from '../support/records.ts';
 import { callUntyped, DEFAULT_MAX_AGE, withObjectPollution } from '../support/setup.ts';
+import { nextBroadcast } from '../support/tabs.ts';
 import {
   buttonNamed,
   buttonsOf,
@@ -250,6 +252,52 @@ describe('with storage: "cookie", the record is saved in the cookie lgpder', () 
     startApp({ purposes: { chat: { cookies: ['lgpder'] } } });
 
     assert.deepStrictEqual(cookieNames(), []);
+  });
+});
+
+describe('with a cookieAdapter named __Host-lgpder, the record is saved in that cookie', () => {
+  /** The adapter of the recipe, with the default maxAge of the manager. */
+  function hostCookie() {
+    return cookieAdapter({ key: '__Host-lgpder', maxAge: DEFAULT_MAX_AGE });
+  }
+
+  it('saves the decisions in __Host-lgpder, and no lgpder cookie exists', () => {
+    const app = startExample({ storage: hostCookie() });
+
+    app.grantAll();
+
+    assert.deepStrictEqual(cookieNames(), ['__Host-lgpder']);
+    const saved = JSON.parse(hostCookie().read() ?? 'null') as {
+      readonly decisions?: Readonly<Record<string, { readonly status?: unknown }>>;
+    } | null;
+    assert.equal(saved?.decisions?.['ads']?.status, 'granted');
+  });
+
+  it('adopts the record saved by a previous page', () => {
+    hostCookie().write(serialized({ analytics: decidedToday('granted') }));
+
+    const app = startExample({ storage: hostCookie() });
+
+    assert.deepStrictEqual(app.manager.getSnapshot().status, {
+      analytics: 'granted',
+      ads: 'pending',
+    });
+  });
+
+  it('follows the other tabs through the BroadcastChannel lgpder:lgpder', async () => {
+    const app = startExample({ storage: hostCookie() });
+    const otherTab = new BroadcastChannel('lgpder:lgpder');
+    try {
+      const delivered = nextBroadcast();
+
+      hostCookie().write(serialized({ ads: decidedToday('denied') }));
+      otherTab.postMessage(null);
+      await delivered;
+
+      assert.equal(app.manager.getSnapshot().status.ads, 'denied');
+    } finally {
+      otherTab.close();
+    }
   });
 });
 
