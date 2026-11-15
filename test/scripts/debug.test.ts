@@ -132,6 +132,21 @@ describe('elements that stay blocked or are blocked again', () => {
     ]);
   });
 
+  it('warns once about an iframe with a javascript: data-src, across reconciliations', (t) => {
+    const warnings = captureWarnings(t);
+    render('<iframe data-consent="ads" data-src="javascript:alert(1)"></iframe>');
+    const { consent, scripts } = openPage({ debug: true });
+
+    consent.decide({ ads: 'granted' });
+    scripts.scan();
+    consent.decide({ analytics: 'granted' });
+
+    assert.deepStrictEqual(warnings, [
+      '[lgpder] data-consent="ads" has a javascript: data-src; it stays blocked.',
+    ]);
+    assert.equal(find('iframe').hasAttribute('src'), false);
+  });
+
   it('says nothing about an element loaded with every purpose granted', (t) => {
     const warnings = captureWarnings(t);
     render('<img data-consent="ads" src="https://tracker.example/pixel.gif" alt="">');

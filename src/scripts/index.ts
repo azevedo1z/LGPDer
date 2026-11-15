@@ -19,6 +19,7 @@ import {
   createEntry,
   findBlocked,
   findUnblocked,
+  hasScriptAddress,
   loadEmbed,
   purposesOf,
   removePlaceholder,
@@ -442,7 +443,8 @@ function isPlainObject(value: unknown): value is Readonly<Record<string, unknown
  *   run again on this page.
  * - `<iframe data-consent="..." data-src="...">` and `<img data-consent="..." data-src="...">`:
  *   without `src` until loaded, and blocked again on a revocation. A blocked iframe shows the
- *   placeholder of `renderPlaceholder`.
+ *   placeholder of `renderPlaceholder`. An iframe whose `data-src` is a `javascript:` address is
+ *   never loaded, and gets no placeholder.
  *
  * An element is activated only when every purpose it names is configured and granted; an empty
  * `data-consent` never is. Activated elements get the `data-consent-active` attribute, so a later
@@ -493,7 +495,7 @@ export function connectScripts(consent: ConsentManager, options?: unknown): Cons
   const states = new WeakMap<Element, Entry>();
   // Handled elements still in the document, pruned on each scan and reconciliation.
   let known: Entry[] = [];
-  // Scripts already reported by the debug warnings.
+  // Scripts and refused iframes already reported by the debug warnings.
   const reported = new WeakSet<Element>();
   const registrations = new Set<Registration>();
   // Status this layer last applied to the page; every purpose starts pending.
@@ -549,6 +551,15 @@ export function connectScripts(consent: ConsentManager, options?: unknown): Cons
     }
   };
 
+  /** Warns, once per element, about an iframe refused for its javascript: data-src. */
+  const reportRefused = (entry: EmbedEntry): void => {
+    if (reported.has(entry.node)) return;
+    reported.add(entry.node);
+    warn(
+      `[lgpder] data-consent="${entry.purposes.join(' ')}" has a javascript: data-src; it stays blocked.`,
+    );
+  };
+
   /** Calls the pending cleanups of the purposes that are no longer granted. */
   const stopUngranted = (status: Readonly<Record<string, ConsentStatus>>): void => {
     for (const registration of registrations) {
@@ -595,8 +606,9 @@ export function connectScripts(consent: ConsentManager, options?: unknown): Cons
     for (const entry of known) {
       if (!current()) return;
       if (entry.active || !isGranted(entry, status)) continue;
-      if (entry.kind === 'embed') loadEmbed(entry);
-      else {
+      if (entry.kind === 'embed') {
+        if (!loadEmbed(entry)) reportRefused(entry);
+      } else {
         // Before inserting: an inline script runs on insertion and may revoke at once.
         for (const id of entry.purposes) running.add(id);
         activateScript(entry);
@@ -616,13 +628,14 @@ export function connectScripts(consent: ConsentManager, options?: unknown): Cons
   /** Loads only this iframe, without a decision, unless it changed since its placeholder. */
   const load = (entry: EmbedEntry, element: Element): void => {
     if (revocation.reloading() || !isBlocked(entry, element)) return;
-    loadEmbed(entry);
-    entry.loaded = true;
+    if (loadEmbed(entry)) entry.loaded = true;
+    else reportRefused(entry);
   };
 
   /**
    * Calls the renderer once per block of each iframe, whatever it does. When it throws or returns
-   * something other than an element, nothing is inserted and the error is rethrown.
+   * something other than an element, nothing is inserted and the error is rethrown. An iframe with
+   * a javascript: data-src gets no placeholder, whose buttons would do nothing.
    */
   const showPlaceholders = (): void => {
     const { renderPlaceholder } = settings;
@@ -631,6 +644,10 @@ export function connectScripts(consent: ConsentManager, options?: unknown): Cons
       if (destroyed) return; // by onRevoke, by code activated just now or by the renderer
       if (entry.kind !== 'embed' || entry.active || !entry.valid || entry.rendered) continue;
       if (entry.node.localName !== 'iframe') continue;
+      if (hasScriptAddress(entry.node)) {
+        reportRefused(entry);
+        continue;
+      }
       entry.rendered = true;
       const element = entry.node as HTMLIFrameElement;
       const context = Object.freeze({
@@ -730,6 +747,8 @@ export function connectScripts(consent: ConsentManager, options?: unknown): Cons
         warn(
           `[lgpder] data-consent="${attribute}" was loaded before consent; it is blocked again.`,
         );
+      } else if (entry.kind === 'embed' && hasScriptAddress(entry.node)) {
+        reportRefused(entry);
       }
     }
     for (const id of activatedPurposes()) running.add(id);
